@@ -1,0 +1,115 @@
+# DiskSpace
+
+A small Elixir library that provides functions to retrieve disk usage statistics for a given filesystem path.
+
+It returns information about total, used, free, and available disk space, using native system calls for accuracy and performance.
+
+Optionally converts the results into human-readable strings with kibibytes etc. or kilobytes etc.
+
+## Features
+
+- Returns disk space metrics as a map with keys:
+  - `:total` — total size of the filesystem
+  - `:used` — bytes currently used
+  - `:free` — bytes free on the filesystem
+  - `:available` — bytes available to the current user (may be less than free due to permissions)
+- Optional conversion of results from bytes into human-readable strings
+- Supports Linux, macOS, BSD, and Windows (via native NIFs)
+- Provides both safe (`stat/2`) and bang (`stat!/2`) variants (with `opts` keyword-list options for human-readable output), the latter raising on errors
+
+## Installation
+
+Add [`disk_space`](https://hex.pm/packages/disk_space) to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:disk_space, "~> 0.1.0"}
+  ]
+end
+```
+
+## Build requirements
+
+Since DiskSpace includes native code, you need the following build tools and development headers depending on your operating system
+
+### Linux
+
+- `build-essential` (for `gcc`, `make`, etc.)
+- `erlang-dev` or `erlang-erts-dev` (Erlang development headers)
+- `libc` development headers (usually installed by default)
+
+Example on Debian and its derivatives:
+
+> `sudo apt-get install build-essential erlang-dev`
+
+### macOS
+
+- Xcode Command Line Tools (for gcc and make)
+- Erlang installed via [Homebrew](https://brew.sh/) or other means
+
+> `xcode-select --install`
+
+### FreeBSD, NetBSD, DragonflyBSD, OpenBSD
+
+- Appropriate compiler and make tools (usually available by default)
+- Erlang development headers (install via `ports` or pkg manager)
+
+### Windows
+
+- Visual Studio with C++ build tools
+- Erlang installed with development headers
+- `nmake` or `mingw32-make` as your make tool
+
+## Usage example
+
+```elixir
+iex(1)> DiskSpace.stat!("/tmp")
+%{
+  available: 32389640192,
+  free: 43895349248,
+  total: 225035927552,
+  used: 181140578304
+}
+iex(2)> DiskSpace.stat("/tmp")
+{:ok,
+ %{
+   available: 32389599232,
+   free: 43895308288,
+   total: 225035927552,
+   used: 181140619264
+ }}
+iex(3)> DiskSpace.stat("/tmp", humanize: true)
+{:ok,
+ %{
+   available: "30.17 GiB",
+   free: "40.88 GiB",
+   total: "209.58 GiB",
+   used: "168.70 GiB"
+ }}
+iex(4)> DiskSpace.stat("/tmp", humanize: true, base: :decimal)
+{:ok,
+ %{
+   available: "32.39 GB",
+   free: "43.90 GB",
+   total: "225.04 GB",
+   used: "181.14 GB"
+ }}
+iex(5)> DiskSpace.stat!("/yolo/swag")
+** (DiskSpace.Error) DiskSpace error: :realpath_failed
+    (disk_space 0.1.0) lib/disk_space.ex:86: DiskSpace.stat!/2
+    iex:5: (file)
+```
+
+## Error-handling
+
+- `stat/2` returns `{:ok, stats_map}` or `{:error, reason}`
+- `stat!/2` returns `stats_map` or raises `DiskSpace.Error`
+
+## License
+
+Apache-2.0
+
+## Documentation
+
+For more details, see the documentation at https://hexdocs.pm/disk_space.
