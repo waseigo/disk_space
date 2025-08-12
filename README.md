@@ -127,3 +127,7 @@ Apache-2.0
 ## Documentation
 
 For more details, see the documentation at https://hexdocs.pm/disk_space.
+
+# Thread
+
+[ElixirForum: DiskSpace - retrieve disk usage statistics for a given filesystem path](https://elixirforum.com/t/diskspace-retrieve-disk-usage-statistics-for-a-given-filesystem-path/72064)
