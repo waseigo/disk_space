@@ -1,5 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Isaak Tsalicoglou <isaak@overbring.com>
 // SPDX-License-Identifier: Apache-2.0
+// This file includes code generated or modified by xAI's Grok 3 
+// over multiple rounds of reviews and improvements.
 
 #include "erl_nif.h"
 #include <errno.h>
