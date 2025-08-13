@@ -41,7 +41,7 @@ defmodule DiskSpace do
   @doc """
   Retrieves disk space statistics for the given `path`.
 
-  Returns `{:ok, info}` where `info` is a map with the following keys and values in **bytes**:
+  Returns `{:ok, stats_map}` where `stats_map` is a plain Elixir map with the following keys and values in **bytes**:
 
     * `:available` - the number of bytes available to the current user.
       This excludes space reserved by the system or for privileged processes.
@@ -53,7 +53,7 @@ defmodule DiskSpace do
 
     * `:used` - the number of bytes currently used (total - free).
 
-    Returns `{:error, reason}` if the operation fails.
+    Returns `{:error, info}` if the operation fails, where `info` is a map with keys `:reason` and `:info`; `:reason` is always an atom, `:info` provides more information or is `nil`, depending on what is reported by the NIF.
 
   ## Options
 
@@ -72,32 +72,35 @@ defmodule DiskSpace do
 
     path
     |> stat_fs()
+    |> reshape_error_tuple()
     |> then(fn stats -> if humanize?, do: humanize(stats, base), else: stats end)
   end
 
   @doc """
-  Same as `stat/2` (and with the same `opts` keyword-list options), but returns the map directly or raises `DiskSpace.Error` on failure.
+  Same as `stat/2` (and with the same `opts` keyword-list options), but returns the `stats_map` plain Elixir map directly or raises `DiskSpace.Error` on failure.
   """
   def stat!(path, opts \\ []) do
     case stat(path, opts) do
-      {:ok, info} -> info
-      {:error, reason} -> raise Error, reason
+      {:ok, stats} -> stats
+      {:error, _info} = failure -> raise Error, reshape_error_tuple(failure)
     end
   end
+
+  defp reshape_error_tuple({:error, reason}), do: {:error, %{reason: reason, info: nil}}
+  defp reshape_error_tuple({:error, reason, info}), do: {:error, %{reason: reason, info: info}}
+  defp reshape_error_tuple({:ok, stats_map} = success) when is_map(stats_map), do: success
 
   @doc """
   Converts disk space statistics coming from `stat/2` and `stat!/2` from raw byte counts to human-readable strings.
 
-  Accepts either a tuple `{:ok, stats}` (from `stat/2`) or a plain map `%{...}` (from a successful `stat!/2` where the values are integer byte counts.
+  Accepts either a tuple `{:ok, stats_map}` (from `stat/2`) or a `stats_map` plain Elixir map (from a successful `stat!/2`), where the key values of `stats_map` are integer byte counts.  Transparent for `{:error, info}` tuples returned from `stat/2`.
 
-  Returns the same structure but with all byte values converted to formatted human-readable strings
-  (e.g., `"10 GiB"`).
+  Returns the same structure but with all byte values converted to formatted human-readable strings (e.g., `"10 GiB"`).
 
   ## Parameters
 
-    * `stats` - either `{:ok, map}` or a `map` with keys like `:available`, `:free`, etc.
-    * `base_type` - formatting base, either `:binary` (default, powers of 1024) or `:decimal`
-      (powers of 1000). Determines the unit suffixes (`KiB` vs `kB`).
+    * `stats` - either `{:ok, stats_map}` or a `stats_map` with keys like `:available`, `:free`, etc. and integer values representing bytes.
+    * `base_type` - formatting base, either `:binary` (default, powers of 1024) or `:decimal` (powers of 1000). Determines the unit suffixes (`KiB` vs `kB`).
 
   ## Examples
 
@@ -111,13 +114,6 @@ defmodule DiskSpace do
       {:error, :eio}
 
       iex> DiskSpace.stat("/tmp") |> DiskSpace.humanize
-      {:ok,
-      %{
-        available: "30.16 GiB",
-        free: "40.88 GiB",
-        total: "209.58 GiB",
-        used: "168.70 GiB"
-      }}
 
   """
   def humanize(_, base_type \\ :binary)
