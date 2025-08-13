@@ -15,9 +15,9 @@ ifeq ($(OS),Windows_NT)
 else
 	UNAME_S := $(shell uname)
 	ifeq ($(UNAME_S),Darwin)
-		LIB_EXT = .so
+		LIB_EXT = .dylib
 		CFLAGS += -arch arm64
-		LDFLAGS += -bundle -flat_namespace -undefined dynamic_lookup -arch arm64
+		LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64
 	else
 		LIB_EXT = .so
 		LDFLAGS += -shared
