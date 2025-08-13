@@ -6,8 +6,11 @@ ERL_INCLUDE_DIR := $(ERL_ROOT_DIR)/usr/include
 ERL_LIB_DIR := $(ERL_ROOT_DIR)/usr/lib
 
 CC ?= gcc
-CFLAGS := -I$(ERL_INCLUDE_DIR) -O2 -Wall -fPIC
+CFLAGS := -I$(ERL_INCLUDE_DIR) -O2 -Wall
 LDFLAGS :=
+
+SRC = disk_space.c
+PRIV_DIR = ../priv
 
 UNAME_S := $(shell uname)
 ifeq ($(UNAME_S),Darwin)
@@ -22,9 +25,7 @@ else
     LDFLAGS += -shared -fPIC
 endif
 
-PRIV_DIR = ../priv
 TARGET = $(PRIV_DIR)/disk_space$(LIB_EXT)
-SRC = disk_space.c
 
 all: $(TARGET)
 
@@ -38,4 +39,3 @@ clean:
 	rm -f $(TARGET)
 
 .PHONY: all clean
-

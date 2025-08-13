@@ -56,14 +56,14 @@ jobs:
         shell: bash
         if: runner.os != 'Windows'
 
-      - name: Install MSYS2 (Windows)
+      - name: Install dependencies and MSYS2 packages (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
           choco install -y msys2
           refreshenv
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm base-devel mingw-w64-x86_64-toolchain
-        shell: pwsh
-        if: runner.os == 'Windows'
+          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
+          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm base-devel mingw-w64-x86_64-toolchain"
 
       - name: Install dependencies and compile NIF (Windows)
         run: |
