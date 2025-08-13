@@ -14,20 +14,6 @@ defmodule DiskSpace do
   """
   @on_load :load_nifs
 
-  # Compute extension at compile-time
-  @lib_ext (case(:os.type()) do
-              {:win32, _} -> ".dll"
-              {:unix, :darwin} -> ".dylib"
-              {:unix, _} -> ".so"
-            end)
-
-  defp load_nifs do
-    priv_dir = :code.priv_dir(:disk_space) |> to_string()
-    base_name = "disk_space"
-    path = Path.join(priv_dir, base_name <> @lib_ext)
-    :erlang.load_nif(to_charlist(path), 0)
-  end
-
   defmodule Error do
     @moduledoc """
     Exception raised when a disk space operation fails.
@@ -40,6 +26,21 @@ defmodule DiskSpace do
     def exception(reason) do
       %__MODULE__{message: "DiskSpace error: #{inspect(reason)}"}
     end
+  end
+
+  defp load_nifs do
+    priv_dir = :code.priv_dir(:disk_space) |> to_string()
+    base_name = "disk_space"
+
+    ext =
+      case :os.type() do
+        {:win32, _} -> ".dll"
+        {:unix, :darwin} -> ".dylib"
+        {:unix, _} -> ".so"
+      end
+
+    path = Path.join(priv_dir, base_name <> ext)
+    :erlang.load_nif(to_charlist(path), 0)
   end
 
   # stub with minimal arity for NIF binding

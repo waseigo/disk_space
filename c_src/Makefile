@@ -6,7 +6,7 @@ ERL_INCLUDE_DIR := $(ERL_ROOT_DIR)/usr/include
 ERL_LIB_DIR := $(ERL_ROOT_DIR)/usr/lib
 
 CC ?= gcc
-CFLAGS := -I$(ERL_INCLUDE_DIR) -O2 -Wall
+CFLAGS := -I$(ERL_INCLUDE_DIR) -O2 -Wall -fPIC
 LDFLAGS :=
 
 SRC = disk_space.c
