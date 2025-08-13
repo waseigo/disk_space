@@ -65,7 +65,7 @@ jobs:
 
       - name: Verify NIF file exists (macOS arm64)
         run: |
-          FILE=../priv/disk_space.dylib
+          FILE=priv/disk_space.dylib
           if [ ! -f "$FILE" ]; then
             echo "ERROR: NIF not found at $FILE"
             exit 1
@@ -82,18 +82,18 @@ jobs:
 
       - name: Verify NIF file exists (Linux)
         run: |
-          FILE=../priv/disk_space.so
+          FILE=priv/disk_space.so
           if [ ! -f "$FILE" ]; then
             echo "ERROR: NIF not found at $FILE"
             exit 1
           fi
           echo "NIF exists at $FILE"
         shell: bash
-        if: runner.os != 'Windows'
+        if: runner.os == 'ubuntu-latest'
 
       - name: Verify NIF file exists (Windows)
         run: |
-          $file = "../priv/disk_space.dll"
+          $file = "priv/disk_space.dll"
           if (-Not (Test-Path $file)) {
             Write-Host "ERROR: NIF not found at $file"
             exit 1
