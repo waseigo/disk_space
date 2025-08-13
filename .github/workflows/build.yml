@@ -8,15 +8,37 @@ on:
 
 jobs:
   build:
+    name: ${{ matrix.os }} – Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }}
     strategy:
       matrix:
-        os:
-          - windows-latest # Windows 10/11, amd64
-          - windows-11-arm # Windows 11, arm64
-          - macos-14 # macOS arm64
-          - ubuntu-latest # Linux amd64
-        elixir: ["1.14"]
-        otp: ["27"]
+        include:
+          # Stable combo
+          - os: ubuntu-latest
+            elixir: "1.14"
+            otp: "26"
+          - os: macos-14
+            elixir: "1.14"
+            otp: "26"
+          - os: windows-latest
+            elixir: "1.14"
+            otp: "26"
+          - os: windows-11-arm
+            elixir: "1.14"
+            otp: "26"
+
+          # Latest combo
+          - os: ubuntu-latest
+            elixir: "1.18"
+            otp: "27"
+          - os: macos-14
+            elixir: "1.18"
+            otp: "27"
+          - os: windows-latest
+            elixir: "1.18"
+            otp: "27"
+          - os: windows-11-arm
+            elixir: "1.18"
+            otp: "27"
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
