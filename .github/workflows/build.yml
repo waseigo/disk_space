@@ -8,47 +8,19 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.os }} – Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }}
     strategy:
       matrix:
-        include:
-          # Stable combo
-          - os: ubuntu-latest
-            elixir: "1.14"
-            otp: "26"
-          - os: macos-14
-            elixir: "1.14"
-            otp: "26"
-          - os: windows-latest
-            elixir: "1.14"
-            otp: "26"
-          - os: windows-11-arm
-            elixir: "1.14"
-            otp: "26"
-
-          # Latest combo
-          - os: ubuntu-latest
-            elixir: "1.18"
-            otp: "27"
-          - os: macos-14
-            elixir: "1.18"
-            otp: "27"
-          - os: windows-latest
-            elixir: "1.18"
-            otp: "27"
-          - os: windows-11-arm
-            elixir: "1.18"
-            otp: "27"
+        os:
+          - windows-latest
+          - macos-14
+          - ubuntu-latest
+        elixir: ["1.14", "1.18"]
+        otp: ["26", "27"] # 1.14 → 26/27, 1.18 → 27
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.os == 'windows-11-arm' }}
 
     steps:
-      - name: Warn about Windows ARM support
-        if: matrix.os == 'windows-11-arm'
-        run: echo "::warning file=build.yml,line=1,col=1::Windows 11 ARM is not yet fully supported by erlef/setup-beam. This job may fail and will not block the workflow."
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -68,73 +40,10 @@ jobs:
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
 
-      # --- Compiler setup before deps install ---
-      - name: Install build tools (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y build-essential
-
-      - name: Install build tools (macOS)
-        if: matrix.os == 'macos-14'
-        run: |
-          xcode-select --install || echo "Xcode command line tools already installed"
-          brew install gcc || true
-
-      - name: Set up C compiler (Windows)
-        if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
-        uses: microsoft/setup-msbuild@v2
-        with:
-          msbuild-architecture: ${{ matrix.os == 'windows-11-arm' && 'arm64' || 'x64' }}
-
-      # --- Now install deps ---
-      - name: Install dependencies (Unix-like)
-        if: matrix.os != 'windows-latest' && matrix.os != 'windows-11-arm'
+      - name: Install dependencies, compile NIF, and run tests
         run: |
           mix deps.get
           mix deps.compile
-        shell: bash
-
-      - name: Install dependencies (Windows)
-        if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
-        run: |
-          mix deps.get
-          mix deps.compile
-        shell: pwsh
-
-      # --- Compile NIF ---
-      - name: Compile NIF (Unix-like)
-        if: matrix.os != 'windows-latest' && matrix.os != 'windows-11-arm'
-        run: |
           mix compile
-        env:
-          ERL_INCLUDE_DIR: ${{ env.ERL_HOME }}/usr/include
-          ERL_LIB_DIR: ${{ env.ERL_HOME }}/usr/lib
-          CC: gcc
-          CFLAGS: -I${{ env.ERL_INCLUDE_DIR }} -O2 -Wall -fPIC
-          LDFLAGS: -L${{ env.ERL_LIB_DIR }} -lerl_interface -lei -shared
-          # macOS-specific flags
-          LDFLAGS_MACOS: -undefined dynamic_lookup -flat_namespace
-        shell: bash
-
-      - name: Compile NIF (Windows)
-        if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
-        run: |
-          $env:Path += ";${{ env.ERL_HOME }}\bin"
-          mix compile
-        shell: pwsh
-        env:
-          ERL_INCLUDE_DIR: ${{ env.ERL_HOME }}/usr/include
-          ERL_LIB_DIR: ${{ env.ERL_HOME }}/usr/lib
-          CC: cl.exe
-          CFLAGS: /I"${{ env.ERL_INCLUDE_DIR }}" /O2 /W3
-          LDFLAGS: /LIBPATH:"${{ env.ERL_LIB_DIR }}" erl_interface.lib ei.lib
-
-      # --- Tests ---
-      - name: Run tests (Unix-like)
-        if: matrix.os != 'windows-latest' && matrix.os != 'windows-11-arm'
-        run: mix test
-        shell: bash
-
-      - name: Run tests (Windows)
-        if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
-        run: mix test
-        shell: pwsh
+          mix test
+        shell: ${{ runner.os == 'Windows' && 'pwsh' || 'bash' }}
