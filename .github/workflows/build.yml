@@ -14,8 +14,9 @@ jobs:
           - windows-latest
           - macos-14
           - ubuntu-latest
-        elixir: ["1.14", "1.18"]
-        otp: ["26", "27"] # corresponding OTP versions
+        elixir_otp:
+          - { elixir: "1.14", otp: "26" }
+          - { elixir: "1.18", otp: "27" }
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
@@ -37,8 +38,8 @@ jobs:
       - name: Set up Elixir and Erlang
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: ${{ matrix.elixir }}
-          otp-version: ${{ matrix.otp }}
+          elixir-version: ${{ matrix.elixir_otp.elixir }}
+          otp-version: ${{ matrix.elixir_otp.otp }}
 
       - name: Install dependencies (Unix-like)
         if: ${{ matrix.os != 'windows-latest' }}
