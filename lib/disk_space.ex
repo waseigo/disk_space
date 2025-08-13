@@ -122,8 +122,6 @@ defmodule DiskSpace do
   """
   def humanize(_, base_type \\ :binary)
 
-  def humanize({:error, _} = failure, _), do: failure
-
   def humanize({:ok, stats}, base_type)
       when is_map(stats) and base_type in [:binary, :decimal],
       do: {:ok, humanize(stats, base_type)}
@@ -135,6 +133,8 @@ defmodule DiskSpace do
         fn {k, v} -> {k, humanize_bytes(v, base_type)} end
       )
       |> Map.new()
+
+  def humanize({:error, _} = failure, _), do: failure
 
   defp humanize_bytes(bytes, base_type)
        when is_integer(bytes) and bytes >= 0 and base_type in [:binary, :decimal] do
