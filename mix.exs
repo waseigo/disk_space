@@ -4,7 +4,7 @@
 defmodule DiskSpace.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.2.1"
 
   def project do
     [
@@ -43,7 +43,15 @@ defmodule DiskSpace.MixProject do
 
   defp package do
     [
-      files: ["lib", "mix.exs", "README*", "LICENSE*"],
+      files: ~w(
+        lib
+        .formatter.exs
+        mix.exs
+        README.md
+        LICENSE
+        c_src*
+      ),
+      files: ["lib", "mix.exs", "README*", "LICENSE*", "c_src/*"],
       maintainers: ["Isaak Tsalicoglou"],
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/waseigo/disk_space"}
