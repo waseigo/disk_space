@@ -46,6 +46,7 @@ jobs:
         run: |
           mix deps.get
           mix deps.compile
+        shell: bash
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
@@ -72,6 +73,7 @@ jobs:
           LDFLAGS: -L${{ env.ERL_LIB_DIR }} -lerl_interface -lei -shared
           # macOS-specific flags
           LDFLAGS_MACOS: -undefined dynamic_lookup -flat_namespace
+        shell: bash
 
       - name: Compile NIF (Windows)
         if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
@@ -86,7 +88,14 @@ jobs:
           CFLAGS: /I"${{ env.ERL_INCLUDE_DIR }}" /O2 /W3
           LDFLAGS: /LIBPATH:"${{ env.ERL_LIB_DIR }}" erl_interface.lib ei.lib
 
-      - name: Run tests
+      - name: Run tests (Unix-like)
+        if: matrix.os != 'windows-latest' && matrix.os != 'windows-11-arm'
         run: |
           mix test
-        shell: ${{ startsWith(matrix.os, 'windows') && 'pwsh' || 'bash' }}
+        shell: bash
+
+      - name: Run tests (Windows)
+        if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
+        run: |
+          mix test
+        shell: pwsh
