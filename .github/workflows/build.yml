@@ -1,0 +1,82 @@
+name: Build and Test DiskSpace NIF
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os:
+          - windows-latest # Windows 10/11, amd64
+          - windows-11-arm # Windows 11, arm64
+          - macos-14 # macOS arm64
+          - ubuntu-latest # Linux amd64
+        elixir: ["1.14"]
+        otp: ["27"]
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Elixir and Erlang
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - name: Install dependencies (Unix-like)
+        if: matrix.os != 'windows-latest' && matrix.os != 'windows-11-arm'
+        run: |
+          mix deps.get
+          mix deps.compile
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
+        run: |
+          mix deps.get
+          mix deps.compile
+        shell: pwsh
+
+      - name: Set up C compiler (Windows)
+        if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: ${{ matrix.os == 'windows-11-arm' && 'arm64' || 'x64' }}
+
+      - name: Compile NIF (Unix-like)
+        if: matrix.os != 'windows-latest' && matrix.os != 'windows-11-arm'
+        run: |
+          mix compile
+        env:
+          ERL_INCLUDE_DIR: ${{ env.ERL_HOME }}/usr/include
+          ERL_LIB_DIR: ${{ env.ERL_HOME }}/usr/lib
+          CC: gcc
+          CFLAGS: -I${{ env.ERL_INCLUDE_DIR }} -O2 -Wall -fPIC
+          LDFLAGS: -L${{ env.ERL_LIB_DIR }} -lerl_interface -lei -shared
+          # macOS-specific flags
+          LDFLAGS_MACOS: -undefined dynamic_lookup -flat_namespace
+
+      - name: Compile NIF (Windows)
+        if: matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm'
+        run: |
+          $env:Path += ";${{ env.ERL_HOME }}\bin"
+          mix compile
+        shell: pwsh
+        env:
+          ERL_INCLUDE_DIR: ${{ env.ERL_HOME }}/usr/include
+          ERL_LIB_DIR: ${{ env.ERL_HOME }}/usr/lib
+          CC: cl.exe
+          CFLAGS: /I"${{ env.ERL_INCLUDE_DIR }}" /O2 /W3
+          LDFLAGS: /LIBPATH:"${{ env.ERL_LIB_DIR }}" erl_interface.lib ei.lib
+
+      - name: Run tests
+        run: |
+          mix test
+        shell: ${{ matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm' && 'pwsh' || 'bash' }}
