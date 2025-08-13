@@ -35,8 +35,7 @@ defmodule DiskSpace do
     ext =
       case :os.type() do
         {:win32, _} -> ".dll"
-        {:unix, :darwin} -> ".dylib"
-        {:unix, _} -> ".so"
+        _ -> ".so"
       end
 
     path = Path.join(priv_dir, base_name <> ext)

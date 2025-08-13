@@ -3,7 +3,6 @@
 
 ERL_ROOT_DIR := $(shell erl -noshell -eval 'io:format("~s", [code:root_dir()])' -s init stop)
 ERL_INCLUDE_DIR := $(ERL_ROOT_DIR)/usr/include
-ERL_LIB_DIR := $(ERL_ROOT_DIR)/usr/lib
 
 CC ?= gcc
 CFLAGS := -I$(ERL_INCLUDE_DIR) -O2 -Wall -fPIC
@@ -13,16 +12,16 @@ SRC = disk_space.c
 PRIV_DIR = ../priv
 
 UNAME_S := $(shell uname)
-ifeq ($(UNAME_S),Darwin)
-    LIB_EXT = .dylib
+LIB_EXT = .so
+
+ifeq ($(UNAME_S),Darwin)    
     CFLAGS += -arch arm64
     LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64
 else ifeq ($(OS),Windows_NT)
     LIB_EXT = .dll
     LDFLAGS += -shared -lws2_32
 else
-    LIB_EXT = .so
-    LDFLAGS += -shared -fPIC
+    LDFLAGS += -shared
 endif
 
 TARGET = $(PRIV_DIR)/disk_space$(LIB_EXT)
@@ -39,3 +38,4 @@ clean:
 	rm -f $(TARGET)
 
 .PHONY: all clean
+
