@@ -25,6 +25,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Elixir dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+
       - name: Set up Elixir and Erlang
         uses: erlef/setup-beam@v1
         with:
@@ -79,4 +89,4 @@ jobs:
       - name: Run tests
         run: |
           mix test
-        shell: ${{ matrix.os == 'windows-latest' || matrix.os == 'windows-11-arm' && 'pwsh' || 'bash' }}
+        shell: ${{ startsWith(matrix.os, 'windows') && 'pwsh' || 'bash' }}
