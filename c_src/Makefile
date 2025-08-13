@@ -17,11 +17,10 @@ else
     ifeq ($(UNAME_S),Darwin)
         LIB_EXT = .dylib
         CFLAGS += -arch arm64
-        LDFLAGS += -dynamiclib -undefined dynamic_lookup
+        LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64
     else
-        # Linux / other Unix
         LIB_EXT = .so
-        LDFLAGS += -shared
+        LDFLAGS += -shared -fPIC
     endif
 endif
 
