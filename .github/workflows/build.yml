@@ -39,7 +39,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: priv
-          key: ${{ runner.os }}-nif-${{ matrix.elixir_otp.elixir }}-${{ matrix.elixir_otp.otp }}
+          key: ${{ runner.os }}-nif-${{ matrix.elixir_otp.elixir }}-${{ matrix.elixir_otp.otp }}-${{ hashFiles('c_src/disk_space.c') }}
           restore-keys: |
             ${{ runner.os }}-nif-
 
@@ -62,8 +62,8 @@ jobs:
         run: |
           choco install -y msys2
           refreshenv
-          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
-          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm base-devel mingw-w64-x86_64-toolchain"
+          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm pacman-mirrors pkg-config"
+          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm --needed base-devel autoconf automake make libtool git mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl mingw-w64-x86_64-libtool"
 
       - name: Install dependencies and compile NIF (Windows)
         run: |
@@ -74,7 +74,7 @@ jobs:
 
       - name: Verify NIF file exists (macOS arm64)
         run: |
-          FILE=priv/disk_space.dylib
+          FILE=priv/disk_space.so
           if [ ! -f "$FILE" ]; then
             echo "ERROR: NIF not found at $FILE"
             exit 1
