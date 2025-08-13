@@ -9,19 +9,17 @@ CC ?= gcc
 CFLAGS := -I$(ERL_INCLUDE_DIR) -O2 -Wall -fPIC
 LDFLAGS :=
 
-ifeq ($(OS),Windows_NT)
+UNAME_S := $(shell uname)
+ifeq ($(UNAME_S),Darwin)
+    LIB_EXT = .dylib
+    CFLAGS += -arch arm64
+    LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64
+else ifeq ($(OS),Windows_NT)
     LIB_EXT = .dll
     LDFLAGS += -shared -lws2_32
 else
-    UNAME_S := $(shell uname)
-    ifeq ($(UNAME_S),Darwin)
-        LIB_EXT = .dylib
-        CFLAGS += -arch arm64
-        LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64
-    else
-        LIB_EXT = .so
-        LDFLAGS += -shared -fPIC
-    endif
+    LIB_EXT = .so
+    LDFLAGS += -shared -fPIC
 endif
 
 PRIV_DIR = ../priv
