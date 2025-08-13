@@ -14,18 +14,17 @@ defmodule DiskSpace do
   """
   @on_load :load_nifs
 
-  defp lib_ext do
-    case :os.type() do
-      {:win32, _} -> ".dll"
-      {:unix, :darwin} -> ".dylib"
-      {:unix, _} -> ".so"
-    end
-  end
+  # Compute extension at compile-time
+  @lib_ext (case(:os.type()) do
+              {:win32, _} -> ".dll"
+              {:unix, :darwin} -> ".dylib"
+              {:unix, _} -> ".so"
+            end)
 
   defp load_nifs do
     priv_dir = :code.priv_dir(:disk_space) |> to_string()
     base_name = "disk_space"
-    path = Path.join(priv_dir, base_name <> lib_ext())
+    path = Path.join(priv_dir, base_name <> @lib_ext)
     :erlang.load_nif(to_charlist(path), 0)
   end
 
