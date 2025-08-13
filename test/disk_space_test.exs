@@ -5,41 +5,6 @@ defmodule DiskSpaceTest do
   use ExUnit.Case, async: true
   doctest DiskSpace
 
-  defmodule DiskSpaceMock do
-    # override the internal call to stat_fs/1 to use this module's stat_fs/1
-    def stat(path, opts \\ []) when is_binary(path) and is_list(opts) do
-      humanize? = Keyword.get(opts, :humanize, false)
-      base = Keyword.get(opts, :base, :binary)
-
-      case stat_fs(path) do
-        {:ok, stats} ->
-          if humanize?, do: {:ok, DiskSpace.humanize(stats, base)}, else: {:ok, stats}
-
-        error ->
-          error
-      end
-    end
-
-    def stat!(path, opts \\ []) do
-      case stat(path, opts) do
-        {:ok, info} -> info
-        {:error, reason} -> raise DiskSpace.Error, reason
-      end
-    end
-
-    def stat_fs("/valid/path") do
-      {:ok,
-       %{
-         available: 10_000,
-         free: 20_000,
-         total: 30_000,
-         used: 10_000
-       }}
-    end
-
-    def stat_fs("/error/path"), do: {:error, :realpath_failed}
-  end
-
   describe "NIF loading" do
     test "NIF loads successfully" do
       assert {:module, DiskSpace} = :code.ensure_loaded(DiskSpace),
@@ -48,33 +13,85 @@ defmodule DiskSpaceTest do
   end
 
   describe "stat/2" do
-    test "returns stats map wrapped in :ok tuple" do
-      assert {:ok, stats} = DiskSpaceMock.stat("/valid/path")
-      assert stats.available == 10_000
+    test "returns stats map wrapped in :ok tuple for valid directory" do
+      path = valid_directory_path()
+      assert {:ok, stats} = DiskSpace.stat(path)
+      assert is_map(stats)
+      assert Enum.sort(Map.keys(stats)) == [:available, :free, :total, :used]
+      assert is_integer(stats.available)
+      assert is_integer(stats.free)
+      assert is_integer(stats.total)
+      assert is_integer(stats.used)
+      assert stats.total >= stats.free
+      assert stats.total >= stats.used
     end
 
-    test "returns error tuple on failure" do
-      assert {:error, :realpath_failed} = DiskSpaceMock.stat("/error/path")
+    test "returns error tuple for non-existent path" do
+      path = Path.join(valid_directory_path(), "nonexistent_#{System.unique_integer()}")
+      assert {:error, %{reason: reason, info: info}} = DiskSpace.stat(path)
+      assert reason in [:not_directory, :winapi_failed, :statvfs_failed, :statfs_failed]
+      assert is_map(info) or is_nil(info)
+
+      if is_map(info) do
+        assert Map.has_key?(info, :errno)
+        assert Map.has_key?(info, :errstr)
+      end
+    end
+
+    test "returns error tuple for non-directory path" do
+      file_path = Path.join(valid_directory_path(), "testfile_#{System.unique_integer()}.txt")
+      File.write(file_path, "test")
+      assert {:error, %{reason: :not_directory, info: nil}} = DiskSpace.stat(file_path)
+      File.rm(file_path)
     end
 
     test "humanizes output when humanize: true option is passed" do
-      result = DiskSpaceMock.stat("/valid/path", humanize: true)
-      assert {:ok, map} = result
-      assert is_binary(map.available)
-      assert String.ends_with?(map.available, "B")
+      path = valid_directory_path()
+      assert {:ok, stats} = DiskSpace.stat(path, humanize: true)
+      assert is_map(stats)
+      assert Enum.sort(Map.keys(stats)) == [:available, :free, :total, :used]
+      assert is_binary(stats.available)
+      assert String.match?(stats.available, ~r/^[0-9.]+ [KMGTP]?i?B$/)
+      assert String.match?(stats.free, ~r/^[0-9.]+ [KMGTP]?i?B$/)
+      assert String.match?(stats.total, ~r/^[0-9.]+ [KMGTP]?i?B$/)
+      assert String.match?(stats.used, ~r/^[0-9.]+ [KMGTP]?i?B$/)
     end
 
     test "humanizes with decimal base when base: :decimal is given" do
-      {:ok, stats} = DiskSpaceMock.stat("/valid/path", humanize: true, base: :decimal)
-      assert String.ends_with?(stats.available, "B")
+      path = valid_directory_path()
+      assert {:ok, stats} = DiskSpace.stat(path, humanize: true, base: :decimal)
+      assert is_map(stats)
+      assert Enum.sort(Map.keys(stats)) == [:available, :free, :total, :used]
+      assert is_binary(stats.available)
+      assert String.match?(stats.available, ~r/^[0-9.]+ [kMGTP]?B$/)
+      assert String.match?(stats.free, ~r/^[0-9.]+ [kMGTP]?B$/)
+      assert String.match?(stats.total, ~r/^[0-9.]+ [kMGTP]?B$/)
+      assert String.match?(stats.used, ~r/^[0-9.]+ [kMGTP]?B$/)
     end
   end
 
   describe "stat!/2" do
     test "returns stats map directly on success" do
-      assert_raise DiskSpace.Error, fn ->
-        DiskSpace.stat!("/nonexistent/path")
-      end
+      path = valid_directory_path()
+      stats = DiskSpace.stat!(path)
+      assert is_map(stats)
+      assert Enum.sort(Map.keys(stats)) == [:available, :free, :total, :used]
+      assert is_integer(stats.available)
+      assert is_integer(stats.free)
+      assert is_integer(stats.total)
+      assert is_integer(stats.used)
+      assert stats.total >= stats.free
+      assert stats.total >= stats.used
+    end
+
+    test "raises DiskSpace.Error on failure" do
+      path = Path.join(valid_directory_path(), "nonexistent_#{System.unique_integer()}")
+
+      assert_raise DiskSpace.Error,
+                   ~r/DiskSpace error: %{.*(reason: (not_directory|winapi_failed|statvfs_failed|statfs_failed)|info: (nil|%\{errno: \d+, errstr: (~c)?".*"\})).*}/,
+                   fn ->
+                     DiskSpace.stat!(path)
+                   end
     end
   end
 
@@ -95,6 +112,15 @@ defmodule DiskSpaceTest do
       result = DiskSpace.humanize(input, :decimal)
       assert is_binary(result.total)
       assert String.contains?(result.total, "MB")
+    end
+  end
+
+  # Helper to get a valid directory path for the platform
+  defp valid_directory_path do
+    if :os.type() == {:win32, :nt} do
+      "C:\\"
+    else
+      "/tmp"
     end
   end
 end
