@@ -30,16 +30,13 @@ defmodule DiskSpace do
 
   defp load_nifs do
     priv_dir = :code.priv_dir(:disk_space) |> to_string()
-    base_name = "disk_space"
+    nif_file = Path.join(priv_dir, "disk_space")
 
-    ext =
-      case :os.type() do
-        {:win32, _} -> ".dll"
-        _ -> ".so"
-      end
-
-    path = Path.join(priv_dir, base_name <> ext)
-    :erlang.load_nif(to_charlist(path), 0)
+    if File.exists?(nif_file) do
+      :erlang.load_nif(to_charlist(nif_file), 0)
+    else
+      raise "NIF library not found: #{nif_file}"
+    end
   end
 
   # stub with minimal arity for NIF binding
