@@ -82,7 +82,7 @@ defmodule DiskSpace do
   def stat!(path, opts \\ []) do
     case stat(path, opts) do
       {:ok, stats} -> stats
-      {:error, _info} = failure -> raise Error, reshape_error_tuple(failure)
+      {:error, info} -> raise Error, info
     end
   end
 
