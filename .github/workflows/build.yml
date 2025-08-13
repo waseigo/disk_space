@@ -39,7 +39,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: priv
-          key: ${{ runner.os }}-nif-${{ matrix.elixir_otp.elixir }}-${{ matrix.elixir_otp.otp }}-${{ hashFiles('c_src/disk_space.c') }}
+          key: ${{ runner.os }}-nif-${{ matrix.elixir_otp.elixir }}-${{ matrix.elixir_otp.otp }}-${{ hashFiles('c_src/disk_space.c', 'Makefile') }}
           restore-keys: |
             ${{ runner.os }}-nif-
 
@@ -72,22 +72,22 @@ jobs:
         shell: pwsh
         if: runner.os == 'Windows'
 
-      - name: Verify NIF file exists (macOS arm64)
-        run: |
-          FILE=priv/disk_space.so
-          if [ ! -f "$FILE" ]; then
-            echo "ERROR: NIF not found at $FILE"
-            exit 1
-          fi
-          ARCH=$(lipo -info $FILE | awk '{print $NF}')
-          if [ "$ARCH" != "arm64" ]; then
-            echo "ERROR: NIF architecture is $ARCH, expected arm64"
-            exit 1
-          else
-            echo "NIF exists at $FILE with architecture $ARCH"
-          fi
-        shell: bash
-        if: runner.os == 'macOS'
+    - name: Verify NIF file exists (macOS arm64)
+      run: |
+        FILE=priv/disk_space.so
+        if [ ! -f "$FILE" ]; then
+          echo "ERROR: NIF not found at $FILE"
+          exit 1
+        fi
+        FILE_TYPE=$(file -b "$FILE")
+        if [[ ! "$FILE_TYPE" =~ "Mach-O" || ! "$FILE_TYPE" =~ "arm64" ]]; then
+          echo "ERROR: NIF at $FILE is invalid or not arm64: $FILE_TYPE"
+          exit 1
+        else
+          echo "NIF exists at $FILE with type: $FILE_TYPE"
+        fi
+      shell: bash
+      if: runner.os == 'macOS'
 
       - name: Verify NIF file exists (Linux)
         run: |
