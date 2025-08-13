@@ -21,3 +21,6 @@ disk_space-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Build location of the NIF
+/priv/
