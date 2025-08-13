@@ -40,6 +40,13 @@ defmodule DiskSpaceTest do
     def stat_fs("/error/path"), do: {:error, :realpath_failed}
   end
 
+  describe "NIF loading" do
+    test "NIF loads successfully" do
+      assert {:module, DiskSpace} = :code.ensure_loaded(DiskSpace),
+             "DiskSpace module failed to load, likely due to NIF loading failure"
+    end
+  end
+
   describe "stat/2" do
     test "returns stats map wrapped in :ok tuple" do
       assert {:ok, stats} = DiskSpaceMock.stat("/valid/path")
