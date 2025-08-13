@@ -7,21 +7,22 @@ ERL_LIB_DIR := $(ERL_ROOT_DIR)/usr/lib
 
 CC ?= gcc
 CFLAGS := -I$(ERL_INCLUDE_DIR) -O2 -Wall -fPIC
-LDFLAGS := -L$(ERL_LIB_DIR) -lerl_interface -lei
+LDFLAGS :=
 
 ifeq ($(OS),Windows_NT)
-	LIB_EXT = .dll
-	LDFLAGS += -lws2_32
+    LIB_EXT = .dll
+    LDFLAGS += -shared -lws2_32
 else
-	UNAME_S := $(shell uname)
-	ifeq ($(UNAME_S),Darwin)
-		LIB_EXT = .dylib
-		CFLAGS += -arch arm64
-		LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64
-	else
-		LIB_EXT = .so
-		LDFLAGS += -shared
-	endif
+    UNAME_S := $(shell uname)
+    ifeq ($(UNAME_S),Darwin)
+        LIB_EXT = .dylib
+        CFLAGS += -arch arm64
+        LDFLAGS += -dynamiclib -undefined dynamic_lookup
+    else
+        # Linux / other Unix
+        LIB_EXT = .so
+        LDFLAGS += -shared
+    endif
 endif
 
 PRIV_DIR = ../priv
@@ -40,3 +41,4 @@ clean:
 	rm -f $(TARGET)
 
 .PHONY: all clean
+
