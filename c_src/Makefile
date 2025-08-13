@@ -14,8 +14,9 @@ PRIV_DIR = ../priv
 UNAME_S := $(shell uname)
 LIB_EXT = .so
 
-ifeq ($(UNAME_S),Darwin)    
-    CFLAGS += -arch arm64
+ifeq ($(UNAME_S),Darwin)
+	CC = clang
+	CFLAGS += -arch arm64
     LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64
 else ifeq ($(OS),Windows_NT)
     LIB_EXT = .dll
