@@ -14,8 +14,9 @@ Optionally converts the results into human-readable strings with kibibytes etc. 
   - `:free` — bytes free on the filesystem
   - `:available` — bytes available to the current user (may be less than `:free` due to permissions)
 - Optional conversion of results from bytes into human-readable strings
-- Supports Linux, macOS, BSD, and Windows (via native NIFs)
-- Provides both safe (`stat/2`) and bang (`stat!/2`) variants (with `opts` keyword-list options for human-readable output), the latter raising on errors
+- Supports Linux, macOS and Windows (via native NIFs)
+- _Might_ support the various BSDs (not tested)
+- Provides both safe (`stat/2`) and bang (`stat!/2`) variants (with `opts` keyword-list options for human-readable output), the latter raising `DiskSpace.Error` on errors
 
 ## Installation
 
@@ -24,16 +25,47 @@ Add [`disk_space`](https://hex.pm/packages/disk_space) to your list of dependenc
 ```elixir
 def deps do
   [
-    {:disk_space, "~> 0.2.2"}
+    {:disk_space, "~> 0.3.0"}
   ]
 end
 ```
 
+## Supported Elixir and OTP versions
+
+| OS                    | Arch. | Elixir | OTP | Builds and `mix test` passes? |
+| --------------------- | ----- | ------ | --- | ----------------------------- |
+| Linux (Ubuntu/Debian) | amd64 | 1.14   | 25  | ❌ errors with Erlang headers |
+| Linux (Ubuntu/Debian) | amd64 | 1.15   | 26  | ✅                            |
+| Linux (Ubuntu/Debian) | amd64 | 1.16   | 26  | ✅                            |
+| Linux (Ubuntu/Debian) | amd64 | 1.17   | 27  | ✅                            |
+| Linux (Ubuntu/Debian) | amd64 | 1.18   | 27  | ✅                            |
+| Linux (Ubuntu/Debian) | amd64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
+| macOS                 | arm64 | 1.14   | 25  | ❌ errors with Erlang headers |
+| macOS                 | arm64 | 1.15   | 26  | ✅                            |
+| macOS                 | arm64 | 1.16   | 26  | ✅                            |
+| macOS                 | arm64 | 1.17   | 27  | ✅                            |
+| macOS                 | arm64 | 1.18   | 27  | ✅                            |
+| macOS                 | arm64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
+| Windows               | amd64 | 1.14   | 25  | ❌ errors with Erlang headers |
+| Windows               | amd64 | 1.15   | 26  | ❌ errors with Erlang headers |
+| Windows               | amd64 | 1.16   | 26  | ❌ errors with Erlang headers |
+| Windows               | amd64 | 1.17   | 27  | ✅                            |
+| Windows               | amd64 | 1.18   | 27  | ✅                            |
+| Windows               | amd64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
+| NetBSD 10.1           | amd64 | 1.17.2 | 27  | ✅                            |
+| FreeBSD 14.3          | amd64 | 1.17.3 | 26  | ✅                            |
+| OpenBSD 7.7           | amd64 | 1.18.3 | 27  | ✅                            |
+| DragonFlyBSD 6.4.2    | amd64 | 1.16.3 | 25  | ❌ errors with Erlang headers |
+
+Summary: requires OTP 27 on Windows, and OTP 26 and above on recent Linux, macOS, NetBSD, FreeBSD 14.3 and OpenBSD 7.7. Does not compile on DragonFlyBSD 6.4.2 yet due to OTP 25. PRs welcome to get it to build on OTP 25.
+
+See also: [GitHub Actions](https://github.com/waseigo/disk_space/actions) for Linux, macOS, Windows.
+
 ## Build requirements
 
-Since DiskSpace includes native code, you need the following build tools and development headers depending on your operating system:
+Since **DiskSpace** includes native code, you need the following build tools and development headers depending on your operating system:
 
-### Linux
+### Linux (amd64)
 
 - `build-essential` (for `gcc`, `make`, etc.)
 - `erlang-dev` or `erlang-erts-dev` (Erlang development headers)
@@ -43,23 +75,61 @@ Example on Debian and its derivatives:
 
 > `sudo apt-get install build-essential erlang-dev`
 
-### macOS
+### macOS (arm64)
 
-- Xcode Command Line Tools (for gcc and make)
+```
+xcode-select --install
+```
+
+- `clang`
 - Erlang installed via [Homebrew](https://brew.sh/) or other means
 
-> `xcode-select --install`
+### NetBSD (amd64)
 
-### FreeBSD, NetBSD, DragonflyBSD, OpenBSD
+✅ Tested on version 10.1 and it works (Elixir 1.17.2, OTP 27).
 
-- Appropriate compiler and make tools (usually available by default)
-- Erlang development headers (install via `ports` or pkg manager)
+```
+# pkgin update
+# pkgin install gcc gmake git erlang elixir
+```
 
-### Windows
+### FreeBSD (amd64)
 
-- Visual Studio with C++ build tools
-- Erlang installed with development headers
-- `nmake` or `mingw32-make` as your make tool
+✅ Tested on version 14.3 and it works (Elixir 1.17.3, OTP 26).
+
+```
+# pkg update
+# pkg install gcc gmake git erlang elixir ca_root_nss
+```
+
+### DragonFlyBSD (amd64)
+
+❌ Tested on version 6.4.2 and it **does not work** (Elixir 1.16.3, OTP **25**).
+
+```
+# pkg update
+# pkg install gcc gmake git erlang elixir
+```
+
+PRs welcome to get it to build on OTP 25.
+
+### OpenBSD (amd64)
+
+✅ Tested on version 7.7 and it works (Elixir 1.18.3, OTP 27).
+
+```
+# pkg_add gcc-11.2.0p15 gmake git erlang-27.3.3v0 elixir-1.18.3
+```
+
+### Windows (amd64)
+
+```
+choco install -y msys2
+refreshenv
+pacman -S -q --noconfirm pacman-mirrors pkg-config base-devel autoconf automake make libtool git mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl mingw-w64-x86_64-libtool
+```
+
+Also, Erlang installed with development headers.
 
 ## Usage example
 
@@ -138,21 +208,11 @@ Add [`:os_mon`](https://erlang.org/documentation/doc-16-rc2/lib/os_mon-2.11/doc/
 | Optional conversion to KiB, kB, etc. | No                                                                                 | Yes, with `DiskSpace.humanize/2`                                                                                                                                                                                                                                                    |
 | Works with UNCs on Windows?          | Probably not (_"On WIN32 - All logical drives of type "FIXED_DISK" are checked."_) | Should work (not tested / cannot test)                                                                                                                                                                                                                                              |
 | Can alert you?                       | Yes, with `:alarm_handler`, signal `:disk_almost_full`, via `:os_mon`              | No, use it for "spot checks"                                                                                                                                                                                                                                                        |
-| Well tested?                         | Yes                                                                                | No (not yet)                                                                                                                                                                                                                                                                        |
+| Well tested?                         | Yes                                                                                | Yes, according to [GitHub Actions](https://github.com/waseigo/disk_space/actions)                                                                                                                                                                                                   |
 
 ## Use of GenAI
 
 `c_src/disk_space.c` was incrementally generated/adapted by xAI's Grok 3 model over multiple rounds of prompting for reviews and improvements that were suggested by Grok 3, GPT-5 and Gemini 2.5 Flash.
-
-## Caveats
-
-- Only tested on Debian Linux 12.
-- _Should_ work on all POSIX systems, including the BSDs, but haven't tested it.
-- _Should_ work on macOS, but I have no Apple PCs anymore to test it out.
-- _Should_ work on Windows, but I have no Windows machines to test it with.
-- The tests do not cover multiplatform compatibility.
-
-Improvements, fixes and suggestions about potential issues welcome. Kindly submit a PR.
 
 ## License
 
