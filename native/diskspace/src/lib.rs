@@ -113,7 +113,7 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
 
     if !buffer_ptr.is_null() {
         if let Ok(heap) = unsafe { GetProcessHeap() } {
-            unsafe { HeapFree(heap, HEAP_FLAGS(0), Some(buffer_ptr as *const _)); }
+            unsafe { let _ = HeapFree(heap, HEAP_FLAGS(0), Some(buffer_ptr as *const _)); }
         }
     }
 
