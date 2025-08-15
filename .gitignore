@@ -24,3 +24,8 @@ disk_space-*.tar
 
 # Build location of the NIF
 /priv/
+# Rust binary artifacts
+/target/
+
+# Rust binary artifacts
+/target/

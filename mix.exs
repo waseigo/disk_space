@@ -11,15 +11,12 @@ defmodule DiskSpace.MixProject do
       app: :disk_space,
       version: @version,
       elixir: "~> 1.15",
-      compilers: [:elixir_make] ++ Mix.compilers(),
-      make: "make -s",
-      make_targets: ["all"],
-      make_clean: ["clean"],
-      make_env: %{"MAKEFLAGS" => "-s"},
-      make_cwd: "c_src",
+      # compilers: [:rustler] ++ Mix.compilers(),
+      rustler_crates: rustler_crates(),
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
+      aliases: aliases(),
       deps: deps(),
 
       # Docs
@@ -66,9 +63,28 @@ defmodule DiskSpace.MixProject do
 
   defp deps do
     [
-      {:elixir_make, "~> 0.9.0", runtime: false},
+      # {:elixir_make, "~> 0.9.0", runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.38.2", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.38.2", only: :dev, runtime: false},
+      {:rustler, "~> 0.36.2", runtime: false}
+    ]
+  end
+
+  defp rustler_crates do
+    [
+      disk_space: [
+        path: "native/disk_space",
+        mode: if(Mix.env() == :prod, do: :release, else: :debug)
+      ]
+    ]
+  end
+
+  defp aliases do
+    [
+      fmt: [
+        "format",
+        "cmd cargo fmt --manifest-path native/disk_space/Cargo.toml"
+      ]
     ]
   end
 end

@@ -1,0 +1,22 @@
+[package]
+name = "diskspace"
+version = "0.4.0"
+authors = []
+edition = "2021"
+
+[lib]
+name = "diskspace"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.36.2"
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["fileapi", "winbase", "winnt", "errhandlingapi", "heapapi"] }
+widestring = "1.0"
+
+[features]
+default = ["nif_version_2_16"]
+nif_version_2_15 = ["rustler/nif_version_2_15"]
+nif_version_2_16 = ["rustler/nif_version_2_16"]

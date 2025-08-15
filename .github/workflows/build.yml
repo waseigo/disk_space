@@ -22,12 +22,7 @@ jobs:
           - { elixir: "1.17", otp: "27" }
           - { elixir: "1.16", otp: "26" }
           - { elixir: "1.15", otp: "26" }
-          # - { elixir: "1.14", otp: "25" }
-        exclude:
-          - os: windows-latest
-            elixir_otp: { elixir: "1.16", otp: "26" }
-          - os: windows-latest
-            elixir_otp: { elixir: "1.15", otp: "26" }
+          - { elixir: "1.14", otp: "25" }
       fail-fast: false
 
     steps:
@@ -44,13 +39,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mix-
 
-      - name: Cache compiled NIF
+      - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
-          path: priv
-          key: ${{ runner.os }}-nif-${{ matrix.elixir_otp.elixir }}-${{ matrix.elixir_otp.otp }}-${{ hashFiles('c_src/disk_space.c', 'Makefile') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            native/disk_space/target
+          key: ${{ runner.os }}-rustler-cargo-${{ hashFiles('native/disk_space/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-nif-
+            ${{ runner.os }}-rustler-cargo-
 
       - name: Set up Elixir and Erlang
         uses: erlef/setup-beam@v1
@@ -58,57 +56,20 @@ jobs:
           elixir-version: ${{ matrix.elixir_otp.elixir }}
           otp-version: ${{ matrix.elixir_otp.otp }}
 
-      - name: Install dependencies and compile NIF (Linux/macOS)
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install dependencies and compile NIF
         run: |
           mix deps.get
-          make -C c_src clean
-          make -C c_src V=1
-          ls -l priv/
-          file priv/disk_space.so || echo "file command failed"
           mix compile
         shell: bash
-        if: runner.os != 'Windows'
-        working-directory: .
-
-      - name: Install dependencies and MSYS2 packages (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          choco install -y msys2
-          refreshenv
-          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S -q --noconfirm pacman-mirrors pkg-config"
-          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S -q --noconfirm base-devel autoconf automake make libtool git"
-          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S -q --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl"
-          C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S -q --noconfirm mingw-w64-x86_64-libtool"
-
-      - name: Install dependencies and compile NIF (Windows)
-        run: |
-          $env:CC = "x86_64-w64-mingw32-gcc"
-          mix deps.get
-          mix compile
-        shell: pwsh
-        if: runner.os == 'Windows'
-
-      - name: Verify NIF file exists (macOS arm64)
-        run: |
-          FILE=priv/disk_space.so
-          if [ ! -f "$FILE" ]; then
-            echo "ERROR: NIF not found at $FILE"
-            exit 1
-          fi
-          FILE_TYPE=$(file -b "$FILE")
-          if [[ ! "$FILE_TYPE" =~ "Mach-O" || ! "$FILE_TYPE" =~ "arm64" ]]; then
-            echo "ERROR: NIF at $FILE is invalid or not arm64: $FILE_TYPE"
-            exit 1
-          else
-            echo "NIF exists at $FILE with type: $FILE_TYPE"
-          fi
-        shell: bash
-        if: runner.os == 'macOS'
 
       - name: Verify NIF file exists (Linux)
         run: |
-          FILE=priv/disk_space.so
+          FILE=priv/native/libdisk_space.so
           if [ ! -f "$FILE" ]; then
             echo "ERROR: NIF not found at $FILE"
             exit 1
@@ -118,24 +79,28 @@ jobs:
         shell: bash
         if: runner.os == 'ubuntu-latest'
 
+      - name: Verify NIF file exists (macOS)
+        run: |
+          FILE=priv/native/libdisk_space.dylib
+          if [ ! -f "$FILE" ]; then
+            echo "ERROR: NIF not found at $FILE"
+            exit 1
+          fi
+          FILE_TYPE=$(file -b "$FILE")
+          echo "NIF exists at $FILE with type: $FILE_TYPE"
+        shell: bash
+        if: runner.os == 'macos-14'
+
       - name: Verify NIF file exists (Windows)
         run: |
-          $file = "priv/disk_space.dll"
+          $file = "priv/native/libdisk_space.dll"
           if (-Not (Test-Path $file)) {
             Write-Host "ERROR: NIF not found at $file"
             exit 1
           }
-          $file_type = C:\tools\msys64\usr\bin\file.exe $file
-          Write-Host "NIF exists at $file with type: $file_type"
         shell: pwsh
         if: runner.os == 'Windows'
 
-      - name: Run tests (Linux/macOS)
+      - name: Run tests
         run: mix test
         shell: bash
-        if: runner.os != 'Windows'
-
-      - name: Run tests (Windows)
-        run: mix test
-        shell: pwsh
-        if: runner.os == 'Windows'

@@ -12,7 +12,10 @@ defmodule DiskSpace do
   Both functions support optionally humanizing the output into
   strings (`:humanize` and `:base` options).
   """
-  @on_load :load_nifs
+
+  # @on_load :load_nifs
+
+  use Rustler, otp_app: :disk_space, crate: "diskspace"
 
   defmodule Error do
     @moduledoc """
@@ -28,12 +31,12 @@ defmodule DiskSpace do
     end
   end
 
-  defp load_nifs do
-    priv_dir = :code.priv_dir(:disk_space) |> to_string()
-    base_name = "disk_space"
-    path = Path.join(priv_dir, base_name)
-    :erlang.load_nif(to_charlist(path), 0)
-  end
+  # defp load_nifs do
+  #   priv_dir = :code.priv_dir(:disk_space) |> to_string()
+  #   base_name = "disk_space"
+  #   path = Path.join(priv_dir, base_name)
+  #   :erlang.load_nif(to_charlist(path), 0)
+  # end
 
   # stub with minimal arity for NIF binding
   defp stat_fs(_path), do: :erlang.nif_error(:nif_not_loaded)
