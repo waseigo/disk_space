@@ -255,6 +255,16 @@ static wchar_t* prepare_long_path(ErlNifEnv* env, const wchar_t* wpath, int* wpa
 
 // NIF function: stat_fs(Path :: binary | string) -> {ok, map} | {error, reason, detail}
 // Returns filesystem statistics for a directory path.
+// - Input: Path as a binary or string (UTF-8 encoded).
+// - Output on success: {:ok, %{available: integer, free: integer, total: integer, used: integer}}
+//   where values are in bytes.
+// - Output on error: {:error, reason, %{errno: integer, errstr: string}} or {:error, reason}
+// - Platform behavior:
+//   - POSIX: Path must be a directory; follows symlinks to check the target.
+//     Uses statvfs, with statfs fallback on Linux.
+//   - Windows: Path must be a directory; reports volume statistics using GetDiskFreeSpaceExW.
+//     Supports long paths with \\?\ prefix.
+// - Runs on a dirty I/O scheduler due to potentially blocking system calls.
 static ERL_NIF_TERM stat_fs(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
 	if (argc != 1) {
 		return make_error_tuple(env, atom_wrong_arity);
