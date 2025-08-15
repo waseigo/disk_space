@@ -1,5 +1,6 @@
-# SPDX-FileCopyrightText: 2025 Isaak Tsalicoglou <isaak@overbring.com>
-# SPDX-License-Identifier: Apache-2.0
+# This file includes code generated or modified by xAI's Grok 3 
+# over multiple rounds of prompting for reviews and improvements that were
+# suggested by Grok 3, GPT-5 and Gemini 2.5 Flash.
 
 ERL_ROOT_DIR := $(shell erl -noshell -eval 'io:format("~s", [code:root_dir()])' -s init stop)
 ERL_INCLUDE_DIR := $(ERL_ROOT_DIR)/usr/include
