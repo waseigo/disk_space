@@ -12,7 +12,7 @@ A small Elixir library with a NIF for getting disk usage statistics for a given 
 - Optional conversion of results from bytes into human-readable strings
 - Supports Linux, macOS and Windows (via native NIFs)
 - _Might_ support the various BSDs (not tested)
-- Provides both safe ([`stat/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat/2)) and bang ([`stat!/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat!/2)) variants (with `opts` keyword-list options for human-readable output using [`humanize/2](https://hexdocs.pm/disk_space/DiskSpace.html#humanize/2)), the latter raising [`DiskSpace.Error`](https://hexdocs.pm/disk_space/DiskSpace.Error.html) on errors
+- Provides both safe ([`stat/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat/2)) and bang ([`stat!/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat!/2)) variants (with `opts` keyword-list options for human-readable output using [`humanize/2`](https://hexdocs.pm/disk_space/DiskSpace.html#humanize/2)), the latter raising [`DiskSpace.Error`](https://hexdocs.pm/disk_space/DiskSpace.Error.html) on errors
 
 ## Installation
 
