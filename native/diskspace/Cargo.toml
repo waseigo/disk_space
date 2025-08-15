@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.36.2"
+nix = { version = "0.30.1", features = ["fs"] }
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
