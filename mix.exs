@@ -10,7 +10,7 @@ defmodule DiskSpace.MixProject do
     [
       app: :disk_space,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.15",
       compilers: [:elixir_make] ++ Mix.compilers(),
       make: "make -s",
       make_targets: ["all"],
