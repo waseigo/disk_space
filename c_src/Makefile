@@ -18,10 +18,10 @@ LIB_EXT = .so
 ifeq ($(UNAME_S),Darwin)
 	CC = clang
 	CFLAGS += -arch arm64
-    LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64 -arch amd64
+    LDFLAGS += -dynamiclib -undefined dynamic_lookup -arch arm64
 else ifeq ($(OS),Windows_NT)
     LIB_EXT = .dll
-    LDFLAGS += -shared -lws2_32
+    LDFLAGS += -shared
 else
     LDFLAGS += -shared
 endif
