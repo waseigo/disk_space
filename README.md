@@ -1,10 +1,6 @@
 # DiskSpace
 
-A small Elixir library that provides functions to retrieve disk usage statistics for a given filesystem path.
-
-It returns information about total, used, free, and available disk space, using native system calls for accuracy and performance.
-
-Optionally converts the results into human-readable strings with kibibytes etc. or kilobytes etc.
+A small Elixir library with a NIF for getting disk usage statistics for a given filesystem path. It returns information about total, used, free, and available disk space, using native system calls for accuracy and performance. Optionally converts the results into human-readable strings with kibibytes etc. or kilobytes etc.
 
 ## Features
 
@@ -16,7 +12,7 @@ Optionally converts the results into human-readable strings with kibibytes etc. 
 - Optional conversion of results from bytes into human-readable strings
 - Supports Linux, macOS and Windows (via native NIFs)
 - _Might_ support the various BSDs (not tested)
-- Provides both safe (`stat/2`) and bang (`stat!/2`) variants (with `opts` keyword-list options for human-readable output), the latter raising `DiskSpace.Error` on errors
+- Provides both safe ([`stat/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat/2)) and bang ([`stat!/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat!/2)) variants (with `opts` keyword-list options for human-readable output using [`humanize/2](https://hexdocs.pm/disk_space/DiskSpace.html#humanize/2)), the latter raising [`DiskSpace.Error`](https://hexdocs.pm/disk_space/DiskSpace.Error.html) on errors
 
 ## Installation
 
@@ -32,30 +28,30 @@ end
 
 ## Supported Elixir and OTP versions
 
-| OS                    | Arch. | Elixir | OTP | Builds and `mix test` passes? |
-| --------------------- | ----- | ------ | --- | ----------------------------- |
-| Linux (Ubuntu/Debian) | amd64 | 1.14   | 25  | ❌ errors with Erlang headers |
-| Linux (Ubuntu/Debian) | amd64 | 1.15   | 26  | ✅                            |
-| Linux (Ubuntu/Debian) | amd64 | 1.16   | 26  | ✅                            |
-| Linux (Ubuntu/Debian) | amd64 | 1.17   | 27  | ✅                            |
-| Linux (Ubuntu/Debian) | amd64 | 1.18   | 27  | ✅                            |
-| Linux (Ubuntu/Debian) | amd64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
-| macOS                 | arm64 | 1.14   | 25  | ❌ errors with Erlang headers |
-| macOS                 | arm64 | 1.15   | 26  | ✅                            |
-| macOS                 | arm64 | 1.16   | 26  | ✅                            |
-| macOS                 | arm64 | 1.17   | 27  | ✅                            |
-| macOS                 | arm64 | 1.18   | 27  | ✅                            |
-| macOS                 | arm64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
-| Windows               | amd64 | 1.14   | 25  | ❌ errors with Erlang headers |
-| Windows               | amd64 | 1.15   | 26  | ❌ errors with Erlang headers |
-| Windows               | amd64 | 1.16   | 26  | ❌ errors with Erlang headers |
-| Windows               | amd64 | 1.17   | 27  | ✅                            |
-| Windows               | amd64 | 1.18   | 27  | ✅                            |
-| Windows               | amd64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
-| NetBSD 10.1           | amd64 | 1.17.2 | 27  | ✅                            |
-| FreeBSD 14.3          | amd64 | 1.17.3 | 26  | ✅                            |
-| OpenBSD 7.7           | amd64 | 1.18.3 | 27  | ✅                            |
-| DragonFlyBSD 6.4.2    | amd64 | 1.16.3 | 25  | ❌ errors with Erlang headers |
+| OS                                                                        | Arch. | Elixir | OTP | Builds and `mix test` passes? |
+| ------------------------------------------------------------------------- | ----- | ------ | --- | ----------------------------- |
+| Linux (Ubuntu/Debian)                                                     | amd64 | 1.14   | 25  | ❌ errors with Erlang headers |
+| Linux (Ubuntu/Debian)                                                     | amd64 | 1.15   | 26  | ✅                            |
+| Linux (Ubuntu/Debian)                                                     | amd64 | 1.16   | 26  | ✅                            |
+| Linux (Ubuntu/Debian)                                                     | amd64 | 1.17   | 27  | ✅                            |
+| Linux (Ubuntu/Debian)                                                     | amd64 | 1.18   | 27  | ✅                            |
+| Linux (Ubuntu/Debian)                                                     | amd64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
+| macOS                                                                     | arm64 | 1.14   | 25  | ❌ errors with Erlang headers |
+| macOS                                                                     | arm64 | 1.15   | 26  | ✅                            |
+| macOS                                                                     | arm64 | 1.16   | 26  | ✅                            |
+| macOS                                                                     | arm64 | 1.17   | 27  | ✅                            |
+| macOS                                                                     | arm64 | 1.18   | 27  | ✅                            |
+| macOS                                                                     | arm64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
+| Windows                                                                   | amd64 | 1.14   | 25  | ❌ errors with Erlang headers |
+| Windows                                                                   | amd64 | 1.15   | 26  | ❌ errors with Erlang headers |
+| Windows                                                                   | amd64 | 1.16   | 26  | ❌ errors with Erlang headers |
+| Windows                                                                   | amd64 | 1.17   | 27  | ✅                            |
+| Windows                                                                   | amd64 | 1.18   | 27  | ✅                            |
+| Windows                                                                   | amd64 | 1.18.4 | 28  | ❔ Unknown / not tested       |
+| [NetBSD 10.1](https://www.netbsd.org/releases/formal-10/NetBSD-10.1.html) | amd64 | 1.17.2 | 27  | ✅                            |
+| [FreeBSD 14.3](https://www.freebsd.org/releases/14.3R/announce/)          | amd64 | 1.17.3 | 26  | ✅                            |
+| [OpenBSD 7.7](https://www.openbsd.org/77.html)                            | amd64 | 1.18.3 | 27  | ✅                            |
+| [DragonFlyBSD 6.4.2](https://www.dragonflybsd.org/release64/)             | amd64 | 1.16.3 | 25  | ❌ errors with Erlang headers |
 
 Summary: requires OTP 27 on Windows, and OTP 26 and above on recent Linux, macOS, NetBSD, FreeBSD 14.3 and OpenBSD 7.7. Does not compile on DragonFlyBSD 6.4.2 yet due to OTP 25. PRs welcome to get it to build on OTP 25.
 
@@ -86,7 +82,7 @@ xcode-select --install
 
 ### NetBSD (amd64)
 
-✅ Tested on version 10.1 and it works (Elixir 1.17.2, OTP 27).
+✅ Tested on [version 10.1](https://www.netbsd.org/releases/formal-10/NetBSD-10.1.html) and it works (Elixir 1.17.2, OTP 27).
 
 ```
 # pkgin update
@@ -95,7 +91,7 @@ xcode-select --install
 
 ### FreeBSD (amd64)
 
-✅ Tested on version 14.3 and it works (Elixir 1.17.3, OTP 26).
+✅ Tested on [version 14.3](https://www.freebsd.org/releases/14.3R/announce/) and it works (Elixir 1.17.3, OTP 26).
 
 ```
 # pkg update
@@ -104,7 +100,7 @@ xcode-select --install
 
 ### DragonFlyBSD (amd64)
 
-❌ Tested on version 6.4.2 and it **does not work** (Elixir 1.16.3, OTP **25**).
+❌ Tested on [version 6.4.2](https://www.dragonflybsd.org/release64/) and it **does not work** (Elixir 1.16.3, OTP **25**).
 
 ```
 # pkg update
@@ -115,7 +111,7 @@ PRs welcome to get it to build on OTP 25.
 
 ### OpenBSD (amd64)
 
-✅ Tested on version 7.7 and it works (Elixir 1.18.3, OTP 27).
+✅ Tested on [version 7.7](https://www.openbsd.org/77.html) and it works (Elixir 1.18.3, OTP 27).
 
 ```
 # pkg_add gcc-11.2.0p15 gmake git erlang-27.3.3v0 elixir-1.18.3
@@ -187,8 +183,8 @@ iex(7)> DiskSpace.stat!("/yolo/swag")
 
 ## Error-handling
 
-- `stat/2` returns `{:ok, stats_map}` or `{:error, info}`, where `info` is a map with populated `:reason` (atom) and `:info` (map or `nil`) with more information, if provided by the NIF.
-- `stat!/2` returns `stats_map` or raises `DiskSpace.Error` with `stat/2`'s `{:error, info}` as the message.
+- [`stat/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat/2) returns `{:ok, stats_map}` or `{:error, info}`, where `info` is a map with populated `:reason` (atom) and `:info` (map or `nil`) with more information, if provided by the NIF.
+- [`stat!/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat!/2) returns `stats_map` or raises [`DiskSpace.Error`](https://hexdocs.pm/disk_space/DiskSpace.Error.html) with the `{:error, info}` of [`stat/2`](https://hexdocs.pm/disk_space/DiskSpace.html#stat/2) as the message.
 
 ## Alternatives
 
@@ -212,7 +208,7 @@ Add [`:os_mon`](https://erlang.org/documentation/doc-16-rc2/lib/os_mon-2.11/doc/
 
 ## Use of GenAI
 
-`c_src/disk_space.c` was incrementally generated/adapted by xAI's Grok 3 model over multiple rounds of prompting for reviews and improvements that were suggested by Grok 3, GPT-5 and Gemini 2.5 Flash.
+[`c_src/disk_space.c`](https://github.com/waseigo/disk_space/blob/main/c_src/disk_space.c) was incrementally generated/adapted by xAI's Grok 3 model over multiple rounds of prompting for reviews and improvements that were suggested by Grok 3, GPT-5 and Gemini 2.5 Flash.
 
 ## License
 
