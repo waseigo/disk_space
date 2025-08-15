@@ -10,7 +10,7 @@ defmodule DiskSpace.MixProject do
     [
       app: :disk_space,
       version: @version,
-      elixir: "~> 1.15",
+      elixir: "~> 1.14",
       # compilers: [:rustler] ++ Mix.compilers(),
       rustler_crates: rustler_crates(),
       start_permanent: Mix.env() == :prod,
