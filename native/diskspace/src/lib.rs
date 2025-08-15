@@ -16,14 +16,18 @@ use std::path::Path;
 #[cfg(windows)]
 use windows::core::PCWSTR;
 #[cfg(windows)]
-use windows::Win32::Foundation::{GetLastError};
+use windows::Win32::Foundation::GetLastError;
 #[cfg(windows)]
-use windows::Win32::Storage::FileSystem::{GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES};
+use windows::Win32::Storage::FileSystem::{
+    GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES,
+};
+#[cfg(windows)]
+use windows::Win32::System::Diagnostics::Debug::{
+    FormatMessageW, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM,
+    FORMAT_MESSAGE_IGNORE_INSERTS,
+};
 #[cfg(windows)]
 use windows::Win32::System::Memory::{GetProcessHeap, HeapFree, HEAP_FLAGS};
-#[cfg(windows)]
-use windows::Win32::System::Diagnostics::Debug::{FormatMessageW, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM,
-    FORMAT_MESSAGE_IGNORE_INSERTS};
 
 // nix imports with proper cfg to avoid unused warnings
 #[cfg(all(unix, target_os = "linux"))]
@@ -87,17 +91,7 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
     let lang: u32 = 0; // Use system default for better localization
 
-    let len = unsafe {
-        FormatMessageW(
-            flags,
-            None,
-            errnum,
-            lang,
-            &mut msg_buf,
-            0,
-            None,
-        )
-    };
+    let len = unsafe { FormatMessageW(flags, None, errnum, lang, &mut msg_buf, 0, None) };
 
     let errstr = if len == 0 {
         "Unknown WinAPI error".to_string()
@@ -107,9 +101,11 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
         wide_cstr.to_string_lossy().trim().to_string() // Trim whitespace
     };
 
-    unsafe {
-        if !msg_buf.is_null() {
-            HeapFree(GetProcessHeap()?, HEAP_FLAGS(0), Some(msg_buf.as_ptr() as *const _));
+    if !msg_buf.is_null() {
+        if let Ok(heap) = GetProcessHeap() {
+            unsafe {
+                HeapFree(heap, HEAP_FLAGS(0), Some(msg_buf.as_ptr() as *const _));
+            }
         }
     }
 
@@ -228,7 +224,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
                 Err(err) => {
                     let io_err = io::Error::from_raw_os_error(err as i32);
                     return make_errno_error_tuple(env, atoms::statfs_failed(), io_err);
-                },
+                }
             };
             let block_size = statfs_buf.block_size() as u64;
             let avail = statfs_buf.blocks_available() as u64 * block_size;
@@ -253,7 +249,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
                 Err(err) => {
                     let io_err = io::Error::from_raw_os_error(err as i32);
                     return make_errno_error_tuple(env, atoms::statvfs_failed(), io_err);
-                },
+                }
             };
             let frag_size = statvfs_buf.fragment_size() as u64;
             let avail = statvfs_buf.blocks_available() as u64 * frag_size;
