@@ -83,7 +83,7 @@ defmodule DiskSpace.MixProject do
     [
       fmt: [
         "format",
-        "cmd cargo fmt --manifest-path native/disk_space/Cargo.toml"
+        "cmd cargo fmt --manifest-path native/diskspace/Cargo.toml"
       ]
     ]
   end
