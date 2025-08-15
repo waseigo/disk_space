@@ -21,7 +21,7 @@ Add [`disk_space`](https://hex.pm/packages/disk_space) to your list of dependenc
 ```elixir
 def deps do
   [
-    {:disk_space, "~> 0.3.0"}
+    {:disk_space, "~> 0.4.0"}
   ]
 end
 ```
