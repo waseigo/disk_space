@@ -76,6 +76,7 @@ fn make_error_tuple3<'a>(env: Env<'a>, reason: Atom, detail: Term<'a>) -> NifRes
     ))
 }
 
+#[cfg(unix)]
 // Helper: Create error tuple with errno details
 fn make_errno_error_tuple<'a>(env: Env<'a>, reason: Atom, err: io::Error) -> NifResult<Term<'a>> {
     let errnum = err.raw_os_error().unwrap_or(0);
