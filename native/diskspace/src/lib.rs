@@ -1,5 +1,7 @@
 use rustler::{Atom, Binary, Env, Error, NifResult, Term};
 use std::ffi::CString;
+
+#[cfg(unix)]
 use std::io;
 
 // Unix-specific imports
@@ -16,13 +18,16 @@ use windows::core::PCWSTR;
 #[cfg(windows)]
 use windows::Win32::Foundation::{GetLastError, INVALID_FILE_ATTRIBUTES};
 #[cfg(windows)]
-use windows::Win32::Storage::FileSystem::{GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY};
+use windows::Win32::Storage::FileSystem::{
+    GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY,
+};
 #[cfg(windows)]
 use windows::Win32::System::Memory::{GetProcessHeap, HeapFree};
 #[cfg(windows)]
-use windows::Win32::System::SystemServices::{FormatMessageW, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS};
-#[cfg(windows)]
-use windows::Win32::System::WindowsProgramming::MAKELANGID;
+use windows::Win32::System::SystemServices::{
+    FormatMessageW, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM,
+    FORMAT_MESSAGE_IGNORE_INSERTS,
+};
 
 // nix imports with proper cfg to avoid unused warnings
 #[cfg(all(unix, target_os = "linux"))]
@@ -86,17 +91,7 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
     let lang: u32 = 0; // Use system default for better localization
 
-    let len = unsafe {
-        FormatMessageW(
-            flags,
-            None,
-            errnum,
-            lang,
-            &mut msg_buf,
-            0,
-            None,
-        )
-    };
+    let len = unsafe { FormatMessageW(flags, None, errnum, lang, &mut msg_buf, 0, None) };
 
     let errstr = if len == 0 {
         "Unknown WinAPI error".to_string()
@@ -167,7 +162,11 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
             path_str.to_string()
         };
 
-        let long_wpath = PCWSTR::from_raw(widestring::WideCString::from_str(&long_path_str)?.as_ptr());
+        let wide_str = match widestring::WideCString::from_str(&long_path_str) {
+            Ok(ws) => ws,
+            Err(_) => return make_error_tuple(env, atoms::path_conversion_failed()),
+        };
+        let long_wpath = PCWSTR::from_raw(wide_str.as_ptr());
 
         let attr = unsafe { GetFileAttributesW(long_wpath) };
         if attr == INVALID_FILE_ATTRIBUTES {
@@ -226,7 +225,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
                 Err(err) => {
                     let io_err = io::Error::from_raw_os_error(err as i32);
                     return make_errno_error_tuple(env, atoms::statfs_failed(), io_err);
-                },
+                }
             };
             let block_size = statfs_buf.block_size() as u64;
             let avail = statfs_buf.blocks_available() as u64 * block_size;
@@ -251,7 +250,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
                 Err(err) => {
                     let io_err = io::Error::from_raw_os_error(err as i32);
                     return make_errno_error_tuple(env, atoms::statvfs_failed(), io_err);
-                },
+                }
             };
             let frag_size = statvfs_buf.fragment_size() as u64;
             let avail = statvfs_buf.blocks_available() as u64 * frag_size;
