@@ -20,9 +20,7 @@ use widestring::{U16CStr, WideCString};
 #[cfg(windows)]
 use winapi::um::errhandlingapi::GetLastError;
 #[cfg(windows)]
-use winapi::um::fileapi::{GetDiskFreeSpaceExW, GetFileAttributesW};
-#[cfg(windows)]
-use winapi::um::winnt::{FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES};
+use winapi::um::fileapi::{GetDiskFreeSpaceExW, GetFileAttributesW, INVALID_FILE_ATTRIBUTES};
 #[cfg(windows)]
 use winapi::um::heapapi::{GetProcessHeap, HeapFree};
 #[cfg(windows)]
@@ -30,6 +28,8 @@ use winapi::um::winbase::{
     FormatMessageW, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM,
     FORMAT_MESSAGE_IGNORE_INSERTS,
 };
+#[cfg(windows)]
+use winapi::um::winnt::FILE_ATTRIBUTE_DIRECTORY;
 #[cfg(windows)]
 use winapi::um::winnt::MAKELANGID;
 
