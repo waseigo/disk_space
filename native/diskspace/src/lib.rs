@@ -1,27 +1,35 @@
 use rustler::{Atom, Binary, Env, Error, NifResult, Term};
-use std::ffi::{CString, OsStr};
+use std::ffi::CString;
 use std::io;
-use std::mem;
-use std::path::Path;
 
 // Unix-specific imports
 #[cfg(unix)]
+use std::ffi::OsStr;
+#[cfg(unix)]
+use std::mem;
+#[cfg(unix)]
 use std::os::unix::ffi::OsStrExt;
+#[cfg(unix)]
+use std::path::Path;
 
 // Windows-specific imports
 #[cfg(windows)]
 use std::ptr;
 #[cfg(windows)]
-use winapi::um::fileapi::{GetDiskFreeSpaceExW, GetFileAttributesW, INVALID_FILE_ATTRIBUTES};
-#[cfg(windows)]
-use winapi::um::winbase::{
-    FormatMessageW, GetProcessHeap, HeapFree, MAKELANGID, FORMAT_MESSAGE_ALLOCATE_BUFFER,
-    FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS, FILE_ATTRIBUTE_DIRECTORY
-};
+use widestring::{U16CStr, WideCString};
 #[cfg(windows)]
 use winapi::um::errhandlingapi::GetLastError;
 #[cfg(windows)]
-use widestring::{WideCString, U16CStr};
+use winapi::um::fileapi::{GetDiskFreeSpaceExW, GetFileAttributesW};
+#[cfg(windows)]
+use winapi::um::heapapi::{GetProcessHeap, HeapFree};
+#[cfg(windows)]
+use winapi::um::winbase::{
+    FormatMessageW, FILE_ATTRIBUTE_DIRECTORY, FORMAT_MESSAGE_ALLOCATE_BUFFER,
+    FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS, INVALID_FILE_ATTRIBUTES,
+};
+#[cfg(windows)]
+use winapi::um::winnt::MAKELANGID;
 
 // libc imports
 #[cfg(target_os = "linux")]
@@ -59,11 +67,7 @@ fn make_error_tuple<'a>(env: Env<'a>, reason: Atom) -> NifResult<Term<'a>> {
 }
 
 // Helper: Create {error, Reason, Detail} tuple
-fn make_error_tuple3<'a>(
-    env: Env<'a>,
-    reason: Atom,
-    detail: Term<'a>,
-) -> NifResult<Term<'a>> {
+fn make_error_tuple3<'a>(env: Env<'a>, reason: Atom, detail: Term<'a>) -> NifResult<Term<'a>> {
     Ok(rustler::types::tuple::make_tuple(
         env,
         &[atoms::error().to_term(env), reason.to_term(env), detail],
@@ -71,11 +75,7 @@ fn make_error_tuple3<'a>(
 }
 
 // Helper: Create error tuple with errno details
-fn make_errno_error_tuple<'a>(
-    env: Env<'a>,
-    reason: Atom,
-    err: io::Error,
-) -> NifResult<Term<'a>> {
+fn make_errno_error_tuple<'a>(env: Env<'a>, reason: Atom, err: io::Error) -> NifResult<Term<'a>> {
     let errnum = err.raw_os_error().unwrap_or(0);
     let errstr = err.to_string();
     let detail = rustler::types::map::map_new(env)
@@ -86,16 +86,12 @@ fn make_errno_error_tuple<'a>(
 
 #[cfg(windows)]
 // Helper: Create error tuple with WinAPI error details
-fn make_winapi_error_tuple<'a>(
-    env: Env<'a>,
-    reason: Atom,
-    errnum: u32,
-) -> NifResult<Term<'a>> {
+fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifResult<Term<'a>> {
     let mut msg_buf: *mut u16 = ptr::null_mut();
     let flags =
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
     let lang = MAKELANGID(0, 0x2) as u32; // Cast u16 to u32
-    
+
     let len = unsafe {
         FormatMessageW(
             flags,
@@ -118,11 +114,7 @@ fn make_winapi_error_tuple<'a>(
 
     unsafe {
         if !msg_buf.is_null() {
-            HeapFree(
-                GetProcessHeap(),
-                0,
-                msg_buf as *mut _,
-            );
+            HeapFree(GetProcessHeap(), 0, msg_buf as *mut _);
         }
     }
 
@@ -165,7 +157,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
         Ok(path) => path,
         Err(_) => return make_error_tuple(env, atoms::invalid_path()),
     };
-    
+
     #[cfg(windows)]
     {
         let path_str = match path_cstr.to_str() {
@@ -251,7 +243,11 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
             let path_cstr = path_cstr.as_ptr();
             let result = unsafe { statfs64(path_cstr, &mut statfs_buf) };
             if result != 0 {
-                return make_errno_error_tuple(env, atoms::statfs_failed(), io::Error::last_os_error());
+                return make_errno_error_tuple(
+                    env,
+                    atoms::statfs_failed(),
+                    io::Error::last_os_error(),
+                );
             }
             let avail = (statfs_buf.f_bavail as u64) * (statfs_buf.f_bsize as u64);
             let free = (statfs_buf.f_bfree as u64) * (statfs_buf.f_bsize as u64);
@@ -275,7 +271,11 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
             let path_cstr = path_cstr.as_ptr();
             let result = unsafe { statvfs(path_cstr, &mut statvfs_buf) };
             if result != 0 {
-                return make_errno_error_tuple(env, atoms::statvfs_failed(), io::Error::last_os_error());
+                return make_errno_error_tuple(
+                    env,
+                    atoms::statvfs_failed(),
+                    io::Error::last_os_error(),
+                );
             }
             let avail = (statvfs_buf.f_bavail as u64) * (statvfs_buf.f_frsize as u64);
             let free = (statvfs_buf.f_bfree as u64) * (statvfs_buf.f_frsize as u64);
