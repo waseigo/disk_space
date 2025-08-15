@@ -188,7 +188,7 @@ iex(7)> DiskSpace.stat!("/yolo/swag")
 
 ## Alternatives
 
-Add [`:os_mon`](https://erlang.org/documentation/doc-16-rc2/lib/os_mon-2.11/doc/html/os_mon_app.html) in `:extra_applications` in `mix.exs`, then use [get_disk_info/1](https://erlang.org/documentation/doc-16-rc2/lib/os_mon-2.11/doc/html/disksup.html#get_disk_info/1) of [`disksup`](https://erlang.org/documentation/doc-16-rc2/lib/os_mon-2.11/doc/html/disksup.html) service.
+Add [`:os_mon`](https://erlang.org/documentation/doc-16-rc2/lib/os_mon-2.11/doc/html/os_mon_app.html) in `:extra_applications` in `mix.exs`, then use [`get_disk_info/1`](https://erlang.org/documentation/doc-16-rc2/lib/os_mon-2.11/doc/html/disksup.html#get_disk_info/1) of [`disksup`](https://erlang.org/documentation/doc-16-rc2/lib/os_mon-2.11/doc/html/disksup.html) service.
 
 ## Comparison to using `:os_mon`/`disksup`
 
