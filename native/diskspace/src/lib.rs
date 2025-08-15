@@ -20,9 +20,9 @@ use widestring::{U16CStr, WideCString};
 #[cfg(windows)]
 use winapi::um::errhandlingapi::GetLastError;
 #[cfg(windows)]
-use winapi::um::fileapi::{
-    GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES,
-};
+use winapi::um::fileapi::{GetDiskFreeSpaceExW, GetFileAttributesW};
+#[cfg(windows)]
+use winapi::um::winnt::{FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES};
 #[cfg(windows)]
 use winapi::um::heapapi::{GetProcessHeap, HeapFree};
 #[cfg(windows)]
