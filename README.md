@@ -53,7 +53,7 @@ end
 | [OpenBSD 7.7](https://www.openbsd.org/77.html)                            | amd64 | 1.18.3 | 27  | ✅                            |
 | [DragonFlyBSD 6.4.2](https://www.dragonflybsd.org/release64/)             | amd64 | 1.16.3 | 25  | ❌ errors with Erlang headers |
 
-Summary: requires Elixir 1.17 with OTP 27 on Windows, and Elixir 1.15 with OTP 26 and above on recent Linux, macOS, NetBSD, FreeBSD 14.3 and OpenBSD 7.7. Does not compile on DragonFlyBSD 6.4.2 yet due to OTP 25. PRs welcome to get it to build on OTP 25.
+Summary: requires Elixir 1.17 with OTP 27 on Windows, and Elixir 1.15 with OTP 26 and above on recent Linux, macOS, NetBSD, FreeBSD 14.3 and OpenBSD 7.7. Does not compile on DragonFlyBSD 6.4.2 yet due to OTP 25. PRs welcome to get it to build on Elixir 1.14 with OTP 25 (standard on Debian 12), and on Windows with Elixir versions lower than 1.17 (and with OTP 25 and above).
 
 See also: [GitHub Actions](https://github.com/waseigo/disk_space/actions) for Linux, macOS, Windows.
 
