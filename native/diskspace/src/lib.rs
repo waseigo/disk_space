@@ -81,30 +81,20 @@ fn make_errno_error_tuple<'a>(env: Env<'a>, reason: Atom, err: io::Error) -> Nif
 #[cfg(windows)]
 // Helper: Create error tuple with WinAPI error details
 fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifResult<Term<'a>> {
-    // Ask the system for a human-readable message for `errnum`.
-    let mut msg: PWSTR = PWSTR::null();
-    let flags =
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
-
-    // Safety: With ALLOCATE_BUFFER, FormatMessageW allocates and writes a pointer to `msg`.
-    let len =
-        unsafe { FormatMessageW(flags, None, errnum, 0, PWSTR(&mut msg.0 as *mut _), 0, None) };
-
+    let mut buffer_ptr: *mut u16 = std::ptr::null_mut();
+    let len = unsafe { FormatMessageW(flags, None, errnum, 0, PWSTR(&mut buffer_ptr), 0, None) };
     let errstr = if len == 0 {
         "Unknown WinAPI error".to_string()
     } else {
-        // Convert the UTF-16 slice (exact length returned) to String and trim common CRLF.
-        let slice = unsafe { std::slice::from_raw_parts(msg.0, len as usize) };
+        let slice = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
         widestring::U16Str::from_slice(slice)
             .to_string_lossy()
             .trim_end()
             .to_string()
     };
-
-    if !msg.is_null() {
-        // Safety: The buffer is owned by the system due to ALLOCATE_BUFFER and must be freed with LocalFree.
+    if !buffer_ptr.is_null() {
         unsafe {
-            let _ = LocalFree(Some(HLOCAL(msg.0 as *mut core::ffi::c_void)));
+            let _ = LocalFree(Some(HLOCAL(buffer_ptr as *mut core::ffi::c_void)));
         }
     }
 
@@ -191,13 +181,11 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
         let mut total: u64 = 0;
         let mut free: u64 = 0;
 
-        // Safety: pointers to out-params are valid for the duration of the call.
         let ok = unsafe {
             GetDiskFreeSpaceExW(wpath, Some(&mut avail), Some(&mut total), Some(&mut free))
         };
-        if !ok.as_bool() {
-            let err = unsafe { GetLastError() };
-            return make_winapi_error_tuple(env, atoms::winapi_failed(), err.0);
+        if let Err(e) = ok {
+            return make_winapi_error_tuple(env, atoms::winapi_failed(), e.code().0 as u32);
         }
 
         let used = total.saturating_sub(free);
