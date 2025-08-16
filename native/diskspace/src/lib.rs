@@ -81,8 +81,27 @@ fn make_errno_error_tuple<'a>(env: Env<'a>, reason: Atom, err: io::Error) -> Nif
 #[cfg(windows)]
 // Helper: Create error tuple with WinAPI error details
 fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifResult<Term<'a>> {
+    use windows::Win32::System::Diagnostics::Debug::{
+        FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_IGNORE_INSERTS,
+    };
+
     let mut buffer_ptr: *mut u16 = std::ptr::null_mut();
-    let len = unsafe { FormatMessageW(flags, None, errnum, 0, PWSTR(&mut buffer_ptr), 0, None) };
+    let flags =
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
+
+    // SAFETY: buffer_ptr will receive the allocated message pointer.
+    let len = unsafe {
+        FormatMessageW(
+            flags,
+            None,
+            errnum,
+            0,
+            PWSTR(buffer_ptr), // just the pointer, not &mut
+            0,
+            None,
+        )
+    };
+
     let errstr = if len == 0 {
         "Unknown WinAPI error".to_string()
     } else {
@@ -92,6 +111,7 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
             .trim_end()
             .to_string()
     };
+
     if !buffer_ptr.is_null() {
         unsafe {
             let _ = LocalFree(Some(HLOCAL(buffer_ptr as *mut core::ffi::c_void)));
