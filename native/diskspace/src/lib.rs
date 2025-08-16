@@ -4,7 +4,6 @@ use std::ffi::CString;
 #[cfg(unix)]
 use std::io;
 
-// Unix-specific imports
 #[cfg(unix)]
 use std::ffi::OsStr;
 #[cfg(unix)]
@@ -12,7 +11,6 @@ use std::os::unix::ffi::OsStrExt;
 #[cfg(unix)]
 use std::path::Path;
 
-// Windows-specific imports
 #[cfg(windows)]
 use std::ptr;
 #[cfg(windows)]
@@ -20,9 +18,7 @@ use windows::core::PCWSTR;
 #[cfg(windows)]
 use windows::core::PWSTR;
 #[cfg(windows)]
-use windows::Win32::Foundation::GetLastError;
-#[cfg(windows)]
-use windows::Win32::Foundation::LocalFree;
+use windows::Win32::Foundation::{GetLastError, LocalFree, HLOCAL};
 #[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES,
@@ -33,7 +29,6 @@ use windows::Win32::System::Diagnostics::Debug::{
     FORMAT_MESSAGE_IGNORE_INSERTS,
 };
 
-// nix imports with proper cfg to avoid unused warnings
 #[cfg(all(unix, target_os = "linux"))]
 use nix::sys::statfs::{statfs, Statfs};
 #[cfg(all(unix, not(target_os = "linux")))]
@@ -93,7 +88,7 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
     let mut buffer_ptr: *mut u16 = ptr::null_mut();
     let flags =
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
-    let lang: u32 = 0; // Use system default for better localization
+    let lang: u32 = 0;
 
     let len = unsafe {
         FormatMessageW(
@@ -107,26 +102,18 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
         )
     };
 
-    // Corrected: Safer string conversion
     let errstr = if len == 0 {
         "Unknown WinAPI error".to_string()
     } else {
-        // Create a slice with the exact length returned by FormatMessageW (excluding the null terminator).
         let message_slice = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        // Convert this UTF-16 slice to a Rust String.
+
         let wide_str = widestring::U16Str::from_slice(message_slice);
-        // FormatMessageW often adds \r\n, so trim the end.
         wide_str.to_string_lossy().trim_end().to_string()
     };
 
-    // Corrected: Use LocalFree as required by FormatMessageW documentation
     if !buffer_ptr.is_null() {
-        // The memory allocated by FormatMessageW with FORMAT_MESSAGE_ALLOCATE_BUFFER
-        // must be freed with LocalFree.
         unsafe {
-            // LocalFree returns a null pointer on success, or the original pointer on failure.
-            // We can ignore the result as there is no recovery path.
-            let _ = LocalFree(buffer_ptr as isize);
+            let _ = LocalFree(HLOCAL(buffer_ptr as isize));
         }
     }
 
