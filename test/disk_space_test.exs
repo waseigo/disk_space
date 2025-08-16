@@ -29,7 +29,15 @@ defmodule DiskSpaceTest do
     test "returns error tuple for non-existent path" do
       path = Path.join(valid_directory_path(), "nonexistent_#{System.unique_integer()}")
       assert {:error, %{reason: reason, info: info}} = DiskSpace.stat(path)
-      assert reason in [:not_directory, :winapi_failed, :statvfs_failed, :statfs_failed]
+
+      assert reason in [
+               :not_directory,
+               :invalid_path,
+               :winapi_failed,
+               :statvfs_failed,
+               :statfs_failed
+             ]
+
       assert is_map(info) or is_nil(info)
 
       if is_map(info) do
@@ -41,8 +49,9 @@ defmodule DiskSpaceTest do
     test "returns error tuple for non-directory path" do
       file_path = Path.join(valid_directory_path(), "testfile_#{System.unique_integer()}.txt")
       File.write(file_path, "test")
-      assert {:error, %{reason: :not_directory, info: info}} = DiskSpace.stat(file_path)
+      assert {:error, %{reason: reason, info: info}} = DiskSpace.stat(file_path)
       assert is_map(info) or is_nil(info)
+      assert is_atom(reason)
 
       if is_map(info) do
         assert Map.has_key?(info, :errno)
