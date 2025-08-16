@@ -81,17 +81,16 @@ fn make_errno_error_tuple<'a>(env: Env<'a>, reason: Atom, err: io::Error) -> Nif
 #[cfg(windows)]
 // Helper: Create error tuple with WinAPI error details
 fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifResult<Term<'a>> {
+    use windows::core::PWSTR;
+    use windows::Win32::Foundation::GetLastError;
     use windows::Win32::System::Diagnostics::Debug::{
         FormatMessageW, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM,
         FORMAT_MESSAGE_IGNORE_INSERTS,
     };
-    use windows::Win32::System::Memory::{LocalFree, HLOCAL};
-    use windows::core::PWSTR;
 
     let mut buffer_ptr: *mut u16 = std::ptr::null_mut();
-    let flags = FORMAT_MESSAGE_ALLOCATE_BUFFER
-        | FORMAT_MESSAGE_FROM_SYSTEM
-        | FORMAT_MESSAGE_IGNORE_INSERTS;
+    let flags =
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
 
     let len = unsafe {
         FormatMessageW(
@@ -99,7 +98,7 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
             None,
             errnum,
             0,
-            PWSTR(&mut buffer_ptr as *mut _ as *mut u16), // ✅ double-pointer cast
+            PWSTR(&mut buffer_ptr as *mut _ as *mut u16),
             0,
             None,
         )
@@ -109,12 +108,15 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
         format!("Unknown WinAPI error: code {}", errnum)
     } else {
         let slice = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        widestring::U16Str::from_slice(slice).to_string_lossy().trim_end().to_string()
+        widestring::U16Str::from_slice(slice)
+            .to_string_lossy()
+            .trim_end()
+            .to_string()
     };
 
     if !buffer_ptr.is_null() {
         unsafe {
-            let _ = LocalFree(Some(HLOCAL(buffer_ptr as *mut core::ffi::c_void)));
+            windows::Win32::Foundation::LocalFree(buffer_ptr as isize);
         }
     }
 
