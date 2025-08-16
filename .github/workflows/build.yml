@@ -45,8 +45,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            native/disk_space/target
-          key: ${{ runner.os }}-rustler-cargo-${{ hashFiles('native/disk_space/Cargo.lock') }}
+            native/diskspace/target
+          key: ${{ runner.os }}-rustler-cargo-${{ hashFiles('native/diskspace/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-rustler-cargo-
 
