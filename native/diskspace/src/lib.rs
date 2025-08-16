@@ -15,7 +15,7 @@ use std::ptr;
 #[cfg(windows)]
 use widestring::{U16Str, WideCString};
 #[cfg(windows)]
-use windows::core::{Error, PCWSTR, PWSTR};
+use windows::core::{Error as WindowsError, PCWSTR, PWSTR};
 #[cfg(windows)]
 use windows::Win32::Foundation::{GetLastError, LocalFree, HLOCAL, ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND};
 #[cfg(windows)]
