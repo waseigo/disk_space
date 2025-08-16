@@ -1,8 +1,9 @@
 use rustler::{Atom, Binary, Env, Error, NifResult, Term};
 use std::ffi::CString;
+
 #[cfg(unix)]
 use std::io;
-// Unix-specific imports
+
 #[cfg(unix)]
 use std::ffi::OsStr;
 #[cfg(unix)]
@@ -10,9 +11,12 @@ use std::os::unix::ffi::OsStrExt;
 #[cfg(unix)]
 use std::path::Path;
 
-// Windows-specific imports
 #[cfg(windows)]
-use windows::core::{PCWSTR, PWSTR};
+use std::ptr;
+#[cfg(windows)]
+use windows::core::PCWSTR;
+#[cfg(windows)]
+use windows::core::PWSTR;
 #[cfg(windows)]
 use windows::Win32::Foundation::{GetLastError, LocalFree, HLOCAL};
 #[cfg(windows)]
@@ -25,7 +29,6 @@ use windows::Win32::System::Diagnostics::Debug::{
     FORMAT_MESSAGE_IGNORE_INSERTS,
 };
 
-// nix imports with proper cfg to avoid unused warnings
 #[cfg(all(unix, target_os = "linux"))]
 use nix::sys::statfs::{statfs, Statfs};
 #[cfg(all(unix, not(target_os = "linux")))]
@@ -37,6 +40,7 @@ mod atoms {
         error,
         wrong_arity,
         invalid_path,
+        alloc_failed,
         path_conversion_failed,
         not_directory,
         winapi_failed,
@@ -81,42 +85,35 @@ fn make_errno_error_tuple<'a>(env: Env<'a>, reason: Atom, err: io::Error) -> Nif
 #[cfg(windows)]
 // Helper: Create error tuple with WinAPI error details
 fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifResult<Term<'a>> {
-    use windows::core::PWSTR;
-    use windows::Win32::Foundation::GetLastError;
-    use windows::Win32::System::Diagnostics::Debug::{
-        FormatMessageW, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM,
-        FORMAT_MESSAGE_IGNORE_INSERTS,
-    };
-
-    let mut buffer_ptr: *mut u16 = std::ptr::null_mut();
+    let mut buffer_ptr: *mut u16 = ptr::null_mut();
     let flags =
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
+    let lang: u32 = 0;
 
     let len = unsafe {
         FormatMessageW(
             flags,
             None,
             errnum,
-            0,
-            PWSTR(&mut buffer_ptr as *mut _ as *mut u16),
+            lang,
+            PWSTR(&mut buffer_ptr as *mut _ as *mut _),
             0,
             None,
         )
     };
 
     let errstr = if len == 0 {
-        format!("Unknown WinAPI error: code {}", errnum)
+        "Unknown WinAPI error".to_string()
     } else {
-        let slice = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
-        widestring::U16Str::from_slice(slice)
-            .to_string_lossy()
-            .trim_end()
-            .to_string()
+        let message_slice = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
+
+        let wide_str = widestring::U16Str::from_slice(message_slice);
+        wide_str.to_string_lossy().trim_end().to_string()
     };
 
     if !buffer_ptr.is_null() {
         unsafe {
-            windows::Win32::Foundation::LocalFree(buffer_ptr as isize);
+            let _ = LocalFree(HLOCAL(buffer_ptr as isize));
         }
     }
 
@@ -126,7 +123,7 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
     make_error_tuple3(env, reason, detail)
 }
 
-// Helper: Convert Elixir term to a path (as bytes). For Windows we later turn UTF-8 -> UTF-16.
+// Helper: Convert Elixir term to a path
 fn get_path_from_term<'a>(_env: Env<'a>, term: Term<'a>) -> NifResult<CString> {
     // Try binary first
     let binary = match term.decode::<Binary>() {
@@ -143,11 +140,9 @@ fn get_path_from_term<'a>(_env: Env<'a>, term: Term<'a>) -> NifResult<CString> {
             }
         }
     };
-
     if binary.is_empty() {
         return Err(Error::BadArg);
     }
-
     match CString::new(binary.as_slice()) {
         Ok(cstr) => Ok(cstr),
         Err(_) => Err(Error::BadArg),
@@ -163,15 +158,13 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
 
     #[cfg(windows)]
     {
-        // The NIF expects UTF-8 input; Windows APIs require UTF-16.
         let path_str = match path_cstr.to_str() {
             Ok(s) => s,
             Err(_) => return make_error_tuple(env, atoms::path_conversion_failed()),
         };
 
-        // Long-path handling. Preserve existing \?\ prefix; convert UNC to \\?\UNC\...
         let is_unc = path_str.starts_with("\\\\") && !path_str.starts_with("\\\\?\\");
-        let mut long_path_str = if is_unc {
+        let long_path_str = if is_unc {
             format!("\\\\?\\UNC{}", &path_str[2..])
         } else if !path_str.starts_with("\\\\?\\") {
             format!("\\\\?\\{}", path_str)
@@ -179,21 +172,16 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
             path_str.to_string()
         };
 
-        // Normalize bare drive roots like "\\?\C:" -> "\\?\C:\" for more predictable API behavior.
-        if long_path_str.len() == 6 && long_path_str.ends_with(':') {
-            long_path_str.push('\\');
-        }
-
         let wide_str = match widestring::WideCString::from_str(&long_path_str) {
             Ok(ws) => ws,
             Err(_) => return make_error_tuple(env, atoms::path_conversion_failed()),
         };
-        let wpath = PCWSTR(wide_str.as_ptr());
+        let long_wpath = PCWSTR::from_raw(wide_str.as_ptr());
 
-        let attr = unsafe { GetFileAttributesW(wpath) };
+        let attr = unsafe { GetFileAttributesW(long_wpath) };
         if attr == INVALID_FILE_ATTRIBUTES {
             let err = unsafe { GetLastError() };
-            return make_winapi_error_tuple(env, atoms::winapi_failed(), err.0);
+            return make_winapi_error_tuple(env, atoms::not_directory(), err.0);
         }
         if (attr & FILE_ATTRIBUTE_DIRECTORY.0) == 0 {
             return make_error_tuple(env, atoms::not_directory());
@@ -202,11 +190,15 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
         let mut avail: u64 = 0;
         let mut total: u64 = 0;
         let mut free: u64 = 0;
-
-        let ok = unsafe {
-            GetDiskFreeSpaceExW(wpath, Some(&mut avail), Some(&mut total), Some(&mut free))
+        let success = unsafe {
+            GetDiskFreeSpaceExW(
+                long_wpath,
+                Some(&mut avail),
+                Some(&mut total),
+                Some(&mut free),
+            )
         };
-        if let Err(e) = ok {
+        if let Err(e) = success {
             return make_winapi_error_tuple(env, atoms::winapi_failed(), e.code().0 as u32);
         }
 
@@ -216,10 +208,10 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
             .map_put(atoms::free().to_term(env), free)?
             .map_put(atoms::total().to_term(env), total)?
             .map_put(atoms::used().to_term(env), used)?;
-        return Ok(rustler::types::tuple::make_tuple(
+        Ok(rustler::types::tuple::make_tuple(
             env,
             &[atoms::ok().to_term(env), map],
-        ));
+        ))
     }
 
     #[cfg(unix)]
@@ -238,7 +230,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
             let statfs_buf: Statfs = match statfs(os_path) {
                 Ok(buf) => buf,
                 Err(err) => {
-                    let io_err = io::Error::from_raw_os_error(err as i32); // nix Errno layout matches C errno
+                    let io_err = io::Error::from_raw_os_error(err as i32);
                     return make_errno_error_tuple(env, atoms::statfs_failed(), io_err);
                 }
             };
@@ -252,10 +244,10 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
                 .map_put(atoms::free().to_term(env), free)?
                 .map_put(atoms::total().to_term(env), total)?
                 .map_put(atoms::used().to_term(env), used)?;
-            return Ok(rustler::types::tuple::make_tuple(
+            Ok(rustler::types::tuple::make_tuple(
                 env,
                 &[atoms::ok().to_term(env), map],
-            ));
+            ))
         }
 
         #[cfg(not(target_os = "linux"))]
@@ -263,7 +255,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
             let statvfs_buf: Statvfs = match statvfs(os_path) {
                 Ok(buf) => buf,
                 Err(err) => {
-                    let io_err = io::Error::from_raw_os_error(err as i32); // nix Errno layout matches C errno
+                    let io_err = io::Error::from_raw_os_error(err as i32);
                     return make_errno_error_tuple(env, atoms::statvfs_failed(), io_err);
                 }
             };
@@ -277,10 +269,10 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
                 .map_put(atoms::free().to_term(env), free)?
                 .map_put(atoms::total().to_term(env), total)?
                 .map_put(atoms::used().to_term(env), used)?;
-            return Ok(rustler::types::tuple::make_tuple(
+            Ok(rustler::types::tuple::make_tuple(
                 env,
                 &[atoms::ok().to_term(env), map],
-            ));
+            ))
         }
     }
 }
