@@ -4,7 +4,7 @@
 defmodule DiskSpace.MixProject do
   use Mix.Project
 
-  @version "0.4.0"
+  @version "1.0.0"
 
   def project do
     [
@@ -25,8 +25,8 @@ defmodule DiskSpace.MixProject do
       homepage_url: "https://overbring.com/open-source/disk_space",
       docs: [
         main: "readme",
-        # logo: "./etc/assets/ex_nominatim_logo.png",
-        assets: %{"etc/assets" => "assets"},
+        logo: "./etc/assets/disk_space_logo.png",
+        assets: %{"etc/assets" => "etc/assets"},
         extras: ["README.md"]
       ]
     ]
@@ -46,9 +46,10 @@ defmodule DiskSpace.MixProject do
         mix.exs
         README.md
         LICENSE
-        c_src*
+        native*
+        Cargo.toml
+        etc*
       ),
-      files: ["lib", "mix.exs", "README*", "LICENSE*", "c_src/*"],
       maintainers: ["Isaak Tsalicoglou"],
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/waseigo/disk_space"}
@@ -63,7 +64,6 @@ defmodule DiskSpace.MixProject do
 
   defp deps do
     [
-      # {:elixir_make, "~> 0.9.0", runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.38.2", only: :dev, runtime: false},
       {:rustler, "~> 0.36.2", runtime: false}
@@ -73,7 +73,7 @@ defmodule DiskSpace.MixProject do
   defp rustler_crates do
     [
       disk_space: [
-        path: "native/disk_space",
+        path: "native/diskspace",
         mode: if(Mix.env() == :prod, do: :release, else: :debug)
       ]
     ]

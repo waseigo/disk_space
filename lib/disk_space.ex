@@ -60,23 +60,19 @@ defmodule DiskSpace do
 
   ## Options
 
-    * `:humanize` (boolean) - whether to convert byte counts into human-readable strings.
-      Defaults to `false`.
-
-    * `:base` (`:binary` or `:decimal`) - base used for human-readable formatting.
-      Defaults to `:binary` (kibibytes, etc.). `:decimal` for kilobytes etc.
+    * `:humanize` (`nil`, `:binary`, or `:decimal`) - whether to convert byte counts into human-readable strings.
+      Defaults to `nil`. If non-`nil`, the atom denotes the base used for human-readable formatting. See `humanize/2`.
   """
 
   # no point in a guard, as the stub function is replaced and
-  # c_src/disk_space.c already checks the type of the path argument
+  # lib.rs already checks the type of the path argument
   def stat(path, opts \\ []) when is_bitstring(path) and is_list(opts) do
-    humanize? = Keyword.get(opts, :humanize, false)
-    base = Keyword.get(opts, :base, :binary)
+    humanize = Keyword.get(opts, :humanize, nil)
 
     path
     |> stat_fs()
     |> reshape_error_tuple()
-    |> then(fn stats -> if humanize?, do: humanize(stats, base), else: stats end)
+    |> then(fn stats -> if not is_nil(humanize), do: humanize(stats, humanize), else: stats end)
   end
 
   @doc """
@@ -98,14 +94,16 @@ defmodule DiskSpace do
 
   Accepts either a tuple `{:ok, stats_map}` (from `stat/2`) or a `stats_map` plain Elixir map (from a successful `stat!/2`), where the key values of `stats_map` are integer byte counts.  Transparent for `{:error, info}` tuples returned from `stat/2`.
 
-  Returns the same structure but with all byte values converted to formatted human-readable strings (e.g., `"10 GiB"`).
+  Returns the same structure but with all byte values converted to formatted human-readable strings (e.g., `"10 GiB"`), if the `base_type` argument value is non-`nil` and one of `:binary` (default) or `:decimal`.
 
   ## Parameters
 
     * `stats` - either `{:ok, stats_map}` or a `stats_map` with keys like `:available`, `:free`, etc. and integer values representing bytes.
-    * `base_type` - formatting base, either `:binary` (default, powers of 1024) or `:decimal` (powers of 1000). Determines the unit suffixes (`KiB` vs `kB`).
+    * `base_type` - formatting base, either `nil` (do not do anything) or `:binary` (default, powers of 1024) or `:decimal` (powers of 1000). If non-`nil`, the atom determines the unit suffixes (`KiB` vs `kB`, etc.).
 
   ## Examples
+      iex> DiskSpace.humanize({:ok, %{free: 123456789}}, nil)
+      {:ok, %{free: 123456789}}
 
       iex> DiskSpace.humanize({:ok, %{free: 123456789}}, :binary)
       {:ok, %{free: "117.74 MiB"}}
@@ -120,6 +118,8 @@ defmodule DiskSpace do
 
   """
   def humanize(_, base_type \\ :binary)
+
+  def humanize(tagged_tuple, nil) when is_tuple(tagged_tuple), do: tagged_tuple
 
   def humanize({:ok, stats}, base_type)
       when is_map(stats) and base_type in [:binary, :decimal],

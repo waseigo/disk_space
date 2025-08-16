@@ -1,3 +1,9 @@
+// This file was incrementally generated/adapted by xAI's Grok 4 
+// model over multiple rounds of prompting for reviews and improvements 
+// that were suggested by Grok 4, GPT-5 and Gemini 2.5 Pro, and 
+// according to the warnings/errors of the GitHub Actions workflow 
+// across Linux, macOS, and Windows
+
 use rustler::{Atom, Binary, Env, Error, NifResult, Term};
 use std::ffi::CString;
 #[cfg(unix)]

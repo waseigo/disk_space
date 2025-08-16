@@ -61,9 +61,9 @@ defmodule DiskSpaceTest do
       File.rm(file_path)
     end
 
-    test "humanizes output when humanize: true option is passed" do
+    test "humanizes output when humanize: non-nil option is passed" do
       path = valid_directory_path()
-      assert {:ok, stats} = DiskSpace.stat(path, humanize: true)
+      assert {:ok, stats} = DiskSpace.stat(path, humanize: :binary)
       assert is_map(stats)
       assert Enum.sort(Map.keys(stats)) == [:available, :free, :total, :used]
       assert is_binary(stats.available)
@@ -75,7 +75,7 @@ defmodule DiskSpaceTest do
 
     test "humanizes with decimal base when base: :decimal is given" do
       path = valid_directory_path()
-      assert {:ok, stats} = DiskSpace.stat(path, humanize: true, base: :decimal)
+      assert {:ok, stats} = DiskSpace.stat(path, humanize: :decimal)
       assert is_map(stats)
       assert Enum.sort(Map.keys(stats)) == [:available, :free, :total, :used]
       assert is_binary(stats.available)
@@ -129,7 +129,6 @@ defmodule DiskSpaceTest do
     end
   end
 
-  # Helper to get a valid directory path for the platform
   defp valid_directory_path do
     if :os.type() == {:win32, :nt} do
       "C:\\"
