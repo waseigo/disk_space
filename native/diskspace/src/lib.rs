@@ -22,6 +22,8 @@ use windows::core::PWSTR;
 #[cfg(windows)]
 use windows::Win32::Foundation::GetLastError;
 #[cfg(windows)]
+use windows::Win32::Foundation::LocalFree;
+#[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES,
 };
@@ -30,8 +32,6 @@ use windows::Win32::System::Diagnostics::Debug::{
     FormatMessageW, FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_FROM_SYSTEM,
     FORMAT_MESSAGE_IGNORE_INSERTS,
 };
-#[cfg(windows)]
-use windows::Win32::System::Memory::LocalFree; // Corrected: Use LocalFree for FormatMessageW
 
 // nix imports with proper cfg to avoid unused warnings
 #[cfg(all(unix, target_os = "linux"))]
