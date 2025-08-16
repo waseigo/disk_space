@@ -13,11 +13,15 @@ use std::path::Path;
 #[cfg(windows)]
 use std::ptr;
 #[cfg(windows)]
+use widestring::{U16Str, WideCString};
+#[cfg(windows)]
 use windows::core::PCWSTR;
 #[cfg(windows)]
 use windows::core::PWSTR;
 #[cfg(windows)]
-use windows::Win32::Foundation::{GetLastError, LocalFree, HLOCAL}; // Corrected: Added HLOCAL
+use windows::Win32::Foundation::{
+    GetLastError, LocalFree, ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, HLOCAL,
+}; // Corrected: Added HLOCAL
 #[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES,
@@ -83,24 +87,14 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
     let flags =
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
     let lang: u32 = 0; // Use system default for better localization
-    let len = unsafe {
-        FormatMessageW(
-            flags,
-            None,
-            errnum,
-            lang,
-            PWSTR(&mut buffer_ptr as *mut _ as *mut _),
-            0,
-            None,
-        )
-    };
+    let len = unsafe { FormatMessageW(flags, None, errnum, lang, PWSTR(&mut buffer_ptr), 0, None) };
     let errstr = if len == 0 {
         "Unknown WinAPI error".to_string()
     } else {
         // Create a slice with the exact length returned by FormatMessageW (excluding the null terminator).
         let message_slice = unsafe { std::slice::from_raw_parts(buffer_ptr, len as usize) };
         // Convert this UTF-16 slice to a Rust String.
-        let wide_str = widestring::U16Str::from_slice(message_slice);
+        let wide_str = U16Str::from_slice(message_slice);
         // FormatMessageW often adds \r\n, so trim the end.
         wide_str.to_string_lossy().trim_end().to_string()
     };
@@ -163,7 +157,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
         } else {
             path_str.to_string()
         };
-        let wide_str = match widestring::WideCString::from_str(&long_path_str) {
+        let wide_str = match WideCString::from_str(&long_path_str) {
             Ok(ws) => ws,
             Err(_) => return make_error_tuple(env, atoms::path_conversion_failed()),
         };
@@ -171,7 +165,14 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
         let attr = unsafe { GetFileAttributesW(long_wpath) };
         if attr == INVALID_FILE_ATTRIBUTES {
             let err = unsafe { GetLastError() };
-            return make_winapi_error_tuple(env, atoms::not_directory(), err.0);
+            let err_code = err.0;
+            let reason = if err_code == ERROR_FILE_NOT_FOUND.0 || err_code == ERROR_PATH_NOT_FOUND.0
+            {
+                atoms::invalid_path()
+            } else {
+                atoms::winapi_failed()
+            };
+            return make_winapi_error_tuple(env, reason, err_code);
         }
         if (attr & FILE_ATTRIBUTE_DIRECTORY.0) == 0 {
             return make_error_tuple(env, atoms::not_directory());
@@ -187,8 +188,9 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
                 Some(&mut free),
             )
         };
-        if let Err(e) = success {
-            return make_winapi_error_tuple(env, atoms::winapi_failed(), e.code().0 as u32);
+        if !success.as_bool() {
+            let err = unsafe { GetLastError() };
+            return make_winapi_error_tuple(env, atoms::winapi_failed(), err.0);
         }
         let used = total.saturating_sub(free);
         let map = rustler::types::map::map_new(env)
