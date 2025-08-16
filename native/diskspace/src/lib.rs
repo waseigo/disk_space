@@ -15,13 +15,9 @@ use std::ptr;
 #[cfg(windows)]
 use widestring::{U16Str, WideCString};
 #[cfg(windows)]
-use windows::core::PCWSTR;
+use windows::core::{Error, PCWSTR, PWSTR};
 #[cfg(windows)]
-use windows::core::PWSTR;
-#[cfg(windows)]
-use windows::Win32::Foundation::{
-    GetLastError, LocalFree, ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, HLOCAL,
-}; // Corrected: Added HLOCAL
+use windows::Win32::Foundation::{GetLastError, LocalFree, HLOCAL, ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND};
 #[cfg(windows)]
 use windows::Win32::Storage::FileSystem::{
     GetDiskFreeSpaceExW, GetFileAttributesW, FILE_ATTRIBUTE_DIRECTORY, INVALID_FILE_ATTRIBUTES,
@@ -87,7 +83,17 @@ fn make_winapi_error_tuple<'a>(env: Env<'a>, reason: Atom, errnum: u32) -> NifRe
     let flags =
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
     let lang: u32 = 0; // Use system default for better localization
-    let len = unsafe { FormatMessageW(flags, None, errnum, lang, PWSTR(&mut buffer_ptr), 0, None) };
+    let len = unsafe {
+        FormatMessageW(
+            flags,
+            None,
+            errnum,
+            lang,
+            PWSTR(&mut buffer_ptr as *mut *mut u16 as *mut u16),
+            0,
+            None,
+        )
+    };
     let errstr = if len == 0 {
         "Unknown WinAPI error".to_string()
     } else {
@@ -166,8 +172,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
         if attr == INVALID_FILE_ATTRIBUTES {
             let err = unsafe { GetLastError() };
             let err_code = err.0;
-            let reason = if err_code == ERROR_FILE_NOT_FOUND.0 || err_code == ERROR_PATH_NOT_FOUND.0
-            {
+            let reason = if err_code == ERROR_FILE_NOT_FOUND.0 || err_code == ERROR_PATH_NOT_FOUND.0 {
                 atoms::invalid_path()
             } else {
                 atoms::winapi_failed()
@@ -180,7 +185,7 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
         let mut avail: u64 = 0;
         let mut total: u64 = 0;
         let mut free: u64 = 0;
-        let success = unsafe {
+        let result = unsafe {
             GetDiskFreeSpaceExW(
                 long_wpath,
                 Some(&mut avail),
@@ -188,9 +193,9 @@ fn stat_fs<'a>(env: Env<'a>, path_term: Term<'a>) -> NifResult<Term<'a>> {
                 Some(&mut free),
             )
         };
-        if !success.as_bool() {
-            let err = unsafe { GetLastError() };
-            return make_winapi_error_tuple(env, atoms::winapi_failed(), err.0);
+        if let Err(e) = result {
+            let err_code = (e.code().0 & 0xFFFF) as u32;
+            return make_winapi_error_tuple(env, atoms::winapi_failed(), err_code);
         }
         let used = total.saturating_sub(free);
         let map = rustler::types::map::map_new(env)
